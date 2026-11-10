@@ -422,6 +422,9 @@
   OVR['d1-sintese'].passos = [{ min: 16, txt: `Porta-vozes dos grupos, até 2 minutos cada, com o tempo dividido igualmente entre os grupos: a demanda mais prioritária do grupo e 1 pergunta para o Dia 2. O que outro grupo já disse não se repete: basta dizer "concordamos com o grupo tal" e acrescentar o que é novo.` }, { min: 14, txt: 'Formulação das questões para o INPE e demais instituições, conduzida pela organização. O líder registra os ajustes e as perguntas novas e entrega.' }];
   OVR['d2-painel'].passos = [{ min: 24, txt: `Porta-vozes dos grupos, até 3 minutos cada, com o tempo dividido igualmente entre os grupos: a síntese da clínica do grupo, sem repetir o que outro grupo já apresentou.` }, { min: 16, txt: 'Identificação de demandas comuns, possibilidades de apoio e pontos ainda sem resposta. O líder registra e entrega.' }];
   OVR['d3-plano'].passos = [{ min: 5, txt: 'Escolher o líder e ler o 5W2H.' }, { min: 60, txt: 'Uma ação por eixo, 12 minutos cada: o quê, por quê, quem, onde, quando, como e quanto.' }, { min: 16, txt: 'Validação em plenária: cada grupo apresenta suas ações em até 2 minutos, com o tempo dividido igualmente entre os grupos.' }, { min: 9, txt: 'Registrar os ajustes da plenária, ler para o grupo e entregar.' }];
+  // ---------- Credenciamento: atividade da organização (UNODC), não é exercício ----------
+  Object.assign(OVR['d1-credenciamento'], { campos: [], quem: 'Organização (UNODC)', papel: 'Credenciamento feito pela organização. Cada participante recebe a indicação da sua mesa.',
+    passos: [{ min: 30, txt: 'Credenciamento conduzido pela organização. Cada participante recebe a indicação da sua mesa e se acomoda com o seu grupo.' }] });
   ETAPAS.forEach(e => Object.assign(e, OVR[e.id] || {}));
   ETAPAS.forEach(e => { if (e.catOverride) { e.campos = e.campos.map(f => f.t === 'clinica' ? { ...f, o: e.catOverride } : f); delete e.catOverride; } });
   const _m = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b; };
@@ -522,7 +525,7 @@ const LS = {
 
 // ---------- estado ----------
 const S = {
-  role: (() => { const r = LS.get('role', null); return r === 'equipe' || (r && CFG.GRUPOS.some(g => g.id === r)) ? r : null; })(),          // 'amarelo' | ... | 'equipe'
+  role: (() => { const r = LS.get('role', null); return r === 'equipe' || r === 'unodc' || (r && CFG.GRUPOS.some(g => g.id === r)) ? r : null; })(),          // 'amarelo' | ... | 'equipe'
   db: null, user: null, downloads: null, mode: 'connecting', // 'online' | 'local'
   resp: {},                            // id -> doc
   ativa: null, ativaAuto: true,        // etapa liberada
@@ -570,6 +573,7 @@ let toastT; function toast(msg) { const t = $('#toast'); t.textContent = msg; t.
 
 // ---------- Base externa (Supabase) para a versão publicada em site próprio ----------
 const SUPA = {"url":"https://bkajbntazonnunhewxdt.supabase.co","key":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrYWpibnRhem9ubnVuaGV3eGR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MTkzMzksImV4cCI6MjEwNjE5NTMzOX0.O0I9pT_VLJSFG2N3HAdaUGaxhbZPT6mXYJnEaLoGmOo"};
+const PANEL = (r) => r === 'equipe' || r === 'unodc';
 function rpc(fn, args) {
   return fetch(SUPA.url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPA.key, Authorization: 'Bearer ' + SUPA.key }, body: JSON.stringify(args) })
     .then(async r => { const t = await r.text(); if (!r.ok) throw new Error(t); return t ? JSON.parse(t) : null; });
@@ -584,11 +588,13 @@ function SupaDB(codigo) {
       L.controle.forEach(([cb]) => cb({ data: () => last.controle || null }));
       L.termometro.forEach(([cb]) => cb(snap(last.termometro)));
       L.avaliacoes.forEach(([cb]) => cb({ docs: (last.avaliacoes || []).map((v, i) => ({ id: String(i), data: () => v })) }));
+      (L.participantes || []).forEach(([cb]) => cb(last.participantes || null, last.mesa_participantes || null));
     } catch (e) { [...L.respostas, ...L.controle].forEach(([, err]) => err && err(e)); }
   }
   let alive = true; const iv = setInterval(() => alive && poll(), 4000); setTimeout(() => alive && poll(), 50);
   const key = (p) => p.split('/')[0];
   return {
+    salvarParticipante: (doc) => rpc('ef_participante_salvar', { p_codigo: codigo, p_doc: doc }),
     stop: () => { alive = false; clearInterval(iv); Object.keys(L).forEach(k => L[k] = []); },
     collection: (name) => ({ onSnapshot: (cb, err) => { (L[name] || (L[name] = [])).push([cb, err]); }, add: (rec) => name === 'avaliacoes' ? rpc('ef_avaliar', { p_codigo: codigo, p_doc: rec }) : Promise.resolve() }),
     doc: (path) => ({
@@ -603,9 +609,9 @@ function SupaDB(codigo) {
 }
 function loginHTML(msg) {
   const eq = S.loginEquipe;
-  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso ao sistema do encontro</span><h2>${eq ? 'Código da equipe de facilitação' : 'Digite o código do encontro'}</h2><p class="muted" style="margin:0">${eq ? 'Uso exclusivo da equipe de facilitação.' : 'O código é o mesmo para todas as mesas. Depois de entrar, basta escolher a mesa.'}</p></div>
-    <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="text" id="cod" autocomplete="off" autocapitalize="characters" placeholder="${eq ? 'EQUIPE-' : 'FOGO-'}" style="font-size:24px;letter-spacing:.08em;text-transform:uppercase"></div>
-    ${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="entrar">Entrar</button>${eq ? `<button class="btn ghost" id="voltar-mesas">Voltar</button>` : `<button class="btn ghost" id="login-equipe">Sou da equipe de facilitação</button>`}</div></div></article></div></div>`;
+  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso ao sistema do encontro</span><h2>${eq ? 'Código de acesso da equipe ou da UNODC' : 'Digite o código do encontro'}</h2><p class="muted" style="margin:0">${eq ? 'Acesso ao painel, ao credenciamento e às respostas dos grupos.' : 'O código é o mesmo para todas as mesas. Depois de entrar, basta escolher a mesa.'}</p></div>
+    <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="text" id="cod" autocomplete="off" autocapitalize="characters" placeholder="${eq ? 'Código' : 'FOGO-'}" style="font-size:24px;letter-spacing:.08em;text-transform:uppercase"></div>
+    ${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="entrar">Entrar</button>${eq ? `<button class="btn ghost" id="voltar-mesas">Voltar</button>` : `<button class="btn ghost" id="login-equipe">Equipe de facilitação ou UNODC</button>`}</div></div></article></div></div>`;
 }
 async function entrar(codeArg) {
   const c = (codeArg || $('#cod')?.value || '').trim().toUpperCase(); if (!c) return;
@@ -659,11 +665,12 @@ function attachDb() {
     softRender();
   }, () => { S.mode = 'local'; setSync(); });
   S.db.doc('controle/estado').onSnapshot(s => { const v = s.data(); const prev = S.ativa; S.ativa = v?.ativa || null; S.ativaAuto = !v?.ativa;
-    if (S.role && S.role !== 'equipe' && prev !== S.ativa) { S.view = null; render(); } else softRender(); }, () => {});
-  S.db.collection('avaliacoes').onSnapshot(s => { S.avals = s.docs.map(d => d.data()).filter(Boolean); if (S.role === 'equipe' && S.tab === 'avaliacoes' && S.screen === 'auto') render(); }, () => {});
+    if (S.role && !PANEL(S.role) && prev !== S.ativa) { S.view = null; render(); } else softRender(); }, () => {});
+  S.db.collection('avaliacoes').onSnapshot(s => { S.avals = s.docs.map(d => d.data()).filter(Boolean); if (PANEL(S.role) && S.tab === 'avaliacoes' && S.screen === 'auto') render(); }, () => {});
   // envia avaliações guardadas sem conexão
   setTimeout(async () => { const loc = LS.get('avals', []); let ch = false; for (const a of loc) { if (!a.sync && S.mode === 'online') { try { const { sync, ...rec } = a; await S.db.collection('avaliacoes').add(rec); a.sync = true; ch = true; } catch {} } } if (ch) LS.set('avals', loc); }, 4000);
-  S.db.collection('termometro').onSnapshot(s => { s.docs.forEach(d => S.termo[d.id] = d.data()); if (S.role === 'equipe' && S.tab === 'termometro' && !document.activeElement?.closest?.('.termo')) render(); }, () => {});
+  S.db.collection('participantes').onSnapshot((parts, mesa) => { if (parts) { S.parts = parts; if (PANEL(S.role) && S.tab === 'credenciamento' && S.screen === 'auto' && !document.activeElement?.closest?.('#tabbody input, #tabbody select, #tabbody textarea')) { const tb = $('#tabbody'); if (tb) { const y = scrollY; tb.innerHTML = credHTML(); scrollTo(0, y); } } } if (mesa) { const ch = JSON.stringify(mesa) !== JSON.stringify(S.mesaParts || []); S.mesaParts = mesa; if (ch && !PANEL(S.role) && S.screen === 'auto' && !document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; render(); scrollTo(0, y); } } }, () => {});
+  S.db.collection('termometro').onSnapshot(s => { s.docs.forEach(d => S.termo[d.id] = d.data()); if (PANEL(S.role) && S.tab === 'termometro' && !document.activeElement?.closest?.('.termo')) render(); }, () => {});
 }
 function loadLocal() {
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('kfa:r:')) { const id = k.slice(6); const v = LS.get('r:' + id); if (v && (!S.resp[id] || (v.atualizadoEm || 0) > (S.resp[id].atualizadoEm || 0))) S.resp[id] = v; } } } catch {}
@@ -734,11 +741,11 @@ function route() {
   const h = (location.hash || '').slice(1);
   const gm = GRUPOS.find(g => h === g.id || h === 'g-' + g.id || h.startsWith(g.id + '-'));
   if (h.startsWith('acesso=')) { const c = decodeURIComponent(h.slice(7)); history.replaceState(null, '', location.pathname); const [ev, m] = c.split('/'); if (m) { S.pendingMesa = m.toLowerCase(); } entrar(ev); return; }
-  if (gm && SUPA && S.role !== 'equipe') { selectMesa(gm.id, h.slice(gm.id.length + 1)); return; }
+  if (gm && SUPA && !PANEL(S.role)) { selectMesa(gm.id, h.slice(gm.id.length + 1)); return; }
   if (gm) { S.role = gm.id; LS.set('role', gm.id); S.screen = 'auto'; const st = h.slice(gm.id.length + 1); if (E[st] && E[st].tipo !== 'pausa') { S.view = st; S.dayView = E[st].dia; } else { S.view = null; S.dayView = null; } render(); scrollTo(0, 0); return; }
   if (h === 'mapa') S.screen = 'mapa';
   else if (h === 'avaliacao') { S.screen = 'avaliacao'; S.avalSent = false; }
-  else if (E[h] && E[h].tipo !== 'pausa') { S.screen = 'auto'; if (S.role && S.role !== 'equipe') { S.view = h; S.dayView = E[h].dia; } else if (!S.role) S.pendingStage = h; else { S.respStage = h; S.tab = 'respostas'; } }
+  else if (E[h] && E[h].tipo !== 'pausa') { S.screen = 'auto'; if (S.role && !PANEL(S.role)) { S.view = h; S.dayView = E[h].dia; } else if (!S.role) S.pendingStage = h; else { S.respStage = h; S.tab = 'respostas'; } }
   else S.screen = (SUPA && !LS.get('evento', null) && !LS.get('codigo', null)) || S.loginEquipe ? 'login' : 'auto';
   render(); scrollTo(0, 0);
 }
@@ -756,7 +763,7 @@ function render() {
   if (S.screen === 'mapa') { who.innerHTML = (S.role ? `<a class="navbtn" href="#">Voltar</a>` : `<a class="navbtn" href="#">Início</a>`); app.innerHTML = mapaHTML(); return; }
   if (S.screen === 'avaliacao') { who.innerHTML = `<a class="navbtn" href="#">Sair da avaliação</a>`; app.innerHTML = avaliacaoHTML(); return; }
   if (!S.role) { who.innerHTML = nav; app.innerHTML = homeHTML(); return; }
-  if (S.role === 'equipe') { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">Equipe de facilitação · trocar</button>`; app.innerHTML = panelHTML(); afterPanel(); return; }
+  if (PANEL(S.role)) { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">${S.role === 'unodc' ? 'UNODC' : 'Equipe de facilitação'} · sair</button>`; app.innerHTML = panelHTML(); afterPanel(); return; }
   const g = G[S.role]; document.documentElement.style.setProperty('--g', g.cor);
   who.innerHTML = nav + ` <button class="chip" id="trocar" title="Trocar de mesa"><span class="dot"></span>${esc(g.papel)} · trocar</button>`;
   app.innerHTML = tabletHTML(g); tick();
@@ -764,7 +771,7 @@ function render() {
 function softRender() {
   // re-render que não interrompe digitação
   if (!S.role || S.screen !== 'auto') return;
-  if (S.role === 'equipe') { if (!document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; render(); scrollTo(0, y); } return; }
+  if (PANEL(S.role)) { if (!document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; render(); scrollTo(0, y); } return; }
   const rail = $('.rail'); if (rail) rail.innerHTML = railHTML(G[S.role]);
 }
 
@@ -881,7 +888,8 @@ function fieldHTML(f, data, ed, e, g, path = '') {
     case 'area': return `<div class="fld"><label for="${id}">${esc(f.l)}</label>${hint}<textarea id="${id}" data-k="${key}" rows="${Math.max(4, (f.rows || 3) + 1)}" ${dis}>${esc(v || '')}</textarea></div>`;
     case 'select': return `<div class="fld"><label for="${id}">${esc(f.l)}</label><select id="${id}" data-k="${key}" ${dis}><option value="">Selecione</option>${f.o.map(o => `<option ${v === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`;
     case 'choice': return `<div class="fld"><span class="lbl">${esc(f.l)}</span><div class="opts" role="radiogroup">${f.o.map(o => `<label><input type="radio" name="${id}" data-k="${key}" value="${esc(o)}" ${v === o ? 'checked' : ''} ${dis}>${esc(o)}</label>`).join('')}</div></div>`;
-    case 'multi': return `<div class="fld"><span class="lbl">${esc(f.l)}</span><div class="opts">${f.o.map(o => `<label><input type="checkbox" data-k="${key}" data-multi="1" value="${esc(o)}" ${(v || []).includes(o) ? 'checked' : ''} ${dis}>${esc(o)}</label>`).join('')}</div></div>`;
+    case 'multi': if (f.k === 'presentes' && S.mesaParts && S.mesaParts.length) { const opts = S.mesaParts.map(m => m.nome + (m.uf ? ' (' + m.uf + ')' : '')); return `<div class="fld"><span class="lbl">Presentes neste exercício</span><span class="hint">Lista da mesa, vinda do credenciamento</span><div class="opts">${opts.map(o => `<label><input type="checkbox" data-k="${key}" data-multi="1" value="${esc(o)}" ${(v || []).includes(o) ? 'checked' : ''} ${dis}>${esc(o)}</label>`).join('')}</div></div>`; }
+      return `<div class="fld"><span class="lbl">${esc(f.l)}</span><div class="opts">${f.o.map(o => `<label><input type="checkbox" data-k="${key}" data-multi="1" value="${esc(o)}" ${(v || []).includes(o) ? 'checked' : ''} ${dis}>${esc(o)}</label>`).join('')}</div></div>`;
     case 'repeat': {
       const arr = Array.isArray(v) ? v : [];
       const n = Math.max(f.n, arr.length);
@@ -899,7 +907,7 @@ function fieldHTML(f, data, ed, e, g, path = '') {
     }
     case 'clinica': {
       const arr = clinicaItems(g, v);
-      return `<div class="fld"><span class="lbl">${esc(f.l)}</span><span class="hint">As primeiras vêm do Exercício 5 (Dia 1). Inclua nos campos seguintes as demandas que surgiram hoje.</span><div class="rep">${arr.map((it, i) =>
+      return `<div class="fld"><span class="lbl">${esc(f.l)}</span><span class="hint">As primeiras vêm dos Grupos temáticos (Dia 1). Inclua nos campos seguintes as demandas que surgiram hoje.</span><div class="rep">${arr.map((it, i) =>
         `<div class="card"><div class="ct"><b><span class="num">${i + 1}</span>Demanda</b>${it.origem ? `<span class="badge">${esc(it.origem)}</span>` : ''}</div>
           ${fieldHTML({ k: 'demanda', t: 'area', l: 'Demanda', rows: 1 }, it, ed, e, g, `${key}.${i}.`)}
           ${fieldHTML({ k: 'categoria', t: 'choice', l: 'Categoria', o: f.o }, it, ed, e, g, `${key}.${i}.`)}
@@ -969,19 +977,96 @@ document.addEventListener('input', ev => {
 document.addEventListener('change', ev => { const t = ev.target; if (t.tagName === 'SELECT' && t.closest('.form[data-doc]')) { const form = t.closest('.form'); editDoc(form, d => setPath(d, t.dataset.k, t.value)); } });
 function rerenderStage() { const y = scrollY; const g = G[S.role]; const sec = $('.shell > section'); if (sec) { sec.innerHTML = stageHTML(E[S.view], g, activeStage()); tick(); } scrollTo(0, y); }
 
+
+// ---------- credenciamento (organização e UNODC) ----------
+const TIPOS = ['Estadual', 'Federal', 'Municipal', 'Organismo internacional', 'Universidade ou pesquisa', 'Sociedade civil', 'Outro'];
+const DIAS3 = [['d1', '16/11'], ['d2', '17/11'], ['d3', '18/11']];
+const normTxt = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+function credDia() { if (S.credDia) return S.credDia; const k = { '2026-11-16': 'd1', '2026-11-17': 'd2', '2026-11-18': 'd3' }[new Date().toLocaleDateString('sv-SE')]; return k || 'd1'; }
+function mesaOpts(sel) { return `<option value="">Sem mesa</option>${GRUPOS.map(g => `<option value="${g.id}" ${sel === g.id ? 'selected' : ''}>${esc(g.papel)} · ${esc(CFG.CORES.find(c => c.id === g.base)?.nome || '')}</option>`).join('')}`; }
+function pformHTML(p) {
+  const v = (k) => esc(p[k] || ''); const pr = p.presenca || {};
+  return `<div class="pform" data-pform="${p.id || 'novo'}">
+    <label class="full">Nome completo *<input data-pf="nome" value="${v('nome')}" autocomplete="off"></label>
+    <label>Nome para o crachá<input data-pf="nome_cracha" value="${v('nome_cracha')}"></label>
+    <label>Instituição<input data-pf="instituicao" value="${v('instituicao')}"></label>
+    <label>Tipo de instituição<select data-pf="tipo"><option value=""></option>${TIPOS.map(t => `<option ${p.tipo === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label>Cargo ou função<input data-pf="cargo" value="${v('cargo')}"></label>
+    <label>Estado que representa<select data-pf="estado"><option value=""></option>${[...UFS, 'Não se aplica'].map(t => `<option ${p.estado === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    <label>UF de origem<input data-pf="uf" value="${v('uf')}" maxlength="2" style="text-transform:uppercase"></label>
+    <label>Cidade<input data-pf="cidade" value="${v('cidade')}"></label>
+    <label>E-mail<input data-pf="email" type="email" value="${v('email')}"></label>
+    <label>Telefone ou WhatsApp<input data-pf="telefone" type="tel" value="${v('telefone')}"></label>
+    <label>Mesa<select data-pf="mesa">${mesaOpts(p.mesa)}</select></label>
+    <div class="full"><span style="font-size:14px;font-weight:600">Presença</span><div class="chk">${DIAS3.map(([k, l]) => `<label><input type="checkbox" data-pfp="${k}" ${pr[k] ? 'checked' : ''}> ${l}</label>`).join('')}</div></div>
+    <div class="full"><span style="font-size:14px;font-weight:600">Autoriza o uso de imagem</span><div class="chk">${['Sim', 'Não'].map(o => `<label><input type="radio" name="img-${p.id || 'novo'}" data-pf="autoriza_imagem" value="${o}" ${p.autoriza_imagem === o ? 'checked' : ''}> ${o}</label>`).join('')}</div></div>
+    <label class="full">Observações<textarea data-pf="observacoes" rows="2">${v('observacoes')}</textarea></label>
+    <div class="full" style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" data-psave="${p.id || 'novo'}">Salvar</button><button class="btn ghost" data-pcancel="1">Cancelar</button></div>
+  </div>`;
+}
+function credHTML() {
+  const P = S.parts || []; const dia = credDia(); const q = normTxt(S.credQ);
+  const lista = P.filter(p => (!q || normTxt([p.nome, p.nome_cracha, p.instituicao, p.uf, p.cargo, p.cidade, p.estado].join(' ')).includes(q)) && (!S.credUF || p.uf === S.credUF) && (!S.credMesa || (S.credMesa === 'sem' ? !p.mesa : p.mesa === S.credMesa)));
+  const pres = P.filter(p => p.presenca && p.presenca[dia]).length; const semMesa = P.filter(p => !p.mesa).length; const pend = (LS.get('credPend', []) || []).length;
+  const ufs = [...new Set(P.map(p => p.uf).filter(Boolean))].sort();
+  const dl = DIAS3.find(d => d[0] === dia)[1];
+  return `<div>
+    <div class="credtop"><div class="k"><b>${P.length}</b><span>inscritos</span></div><div class="k"><b>${pres}</b><span>presentes em ${dl}</span></div><div class="k"><b>${P.length - pres}</b><span>ainda não credenciados em ${dl}</span></div><div class="k"><b>${semMesa}</b><span>sem mesa definida</span></div></div>
+    ${pend ? `<div class="banner">${pend} alteração(ões) guardada(s) neste aparelho, aguardando conexão para enviar.</div>` : ''}
+    <div class="credbar"><span class="seg3" role="group" aria-label="Dia">${DIAS3.map(([k, l]) => `<button data-pdia="${k}" aria-pressed="${k === dia}">${l}</button>`).join('')}</span>
+      <input type="search" id="credq" placeholder="Buscar por nome, instituição ou estado" value="${esc(S.credQ || '')}" autocomplete="off">
+      <select id="creduf" aria-label="Filtrar por UF"><option value="">Todas as UFs</option>${ufs.map(u => `<option ${S.credUF === u ? 'selected' : ''}>${u}</option>`).join('')}</select>
+      <select id="credmesa" aria-label="Filtrar por mesa"><option value="">Todas as mesas</option><option value="sem" ${S.credMesa === 'sem' ? 'selected' : ''}>Sem mesa</option>${GRUPOS.map(g => `<option value="${g.id}" ${S.credMesa === g.id ? 'selected' : ''}>${esc(g.papel)}</option>`).join('')}</select>
+      <button class="btn" id="cred-novo">+ Novo participante</button><button class="btn ghost" id="cred-csv">Baixar lista</button></div>
+    ${S.credEdit === 'novo' ? `<div class="pcard">${pformHTML({ presenca: { [dia]: true } })}</div>` : ''}
+    <div class="plist">${lista.map(p => { const on = !!(p.presenca && p.presenca[dia]); const g = G[p.mesa];
+      return `<div class="pcard ${on ? 'on' : ''}"><div class="prow"><div class="pmain"><b>${esc(p.nome)}</b><span>${esc([p.instituicao, p.uf, p.cargo].filter(Boolean).join(' · '))}</span></div>
+        <div class="pact"><select data-pmesa="${p.id}" aria-label="Mesa de ${esc(p.nome)}" ${g ? `style="border-left:6px solid ${g.cor}"` : ''}>${mesaOpts(p.mesa)}</select>
+        <button class="pbtn" data-ppres="${p.id}">${on ? 'Presente ✓' : 'Credenciar'}</button><button class="lbtn" data-pedit="${p.id}">${S.credEdit === p.id ? 'Fechar' : 'Dados'}</button></div></div>
+        ${S.credEdit === p.id ? pformHTML(p) : ''}</div>`; }).join('') || '<p class="muted">Nenhum participante encontrado.</p>'}</div>
+  </div>`;
+}
+function credRender(keepFocus) { const tb = $('#tabbody'); if (!tb) return; const a = document.activeElement; const id = a && a.id; const pos = a && a.selectionStart; const y = scrollY; tb.innerHTML = credHTML(); scrollTo(0, y); if (keepFocus && id) { const el = document.getElementById(id); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch {} } } }
+async function savePart(doc) {
+  S.parts = S.parts || []; const i = doc.id ? S.parts.findIndex(p => p.id === doc.id) : -1; if (i >= 0) S.parts[i] = { ...S.parts[i], ...doc };
+  try { if (!S.db || !S.db.salvarParticipante) throw new Error('offline'); const r = await S.db.salvarParticipante(doc);
+    if (r) { const j = S.parts.findIndex(p => p.id === r.id); if (j >= 0) S.parts[j] = r; else S.parts.push(r); } toast('Salvo'); return true; }
+  catch (e) { if (/nome obrigatorio/.test(String(e))) { toast('Informe o nome do participante.'); return false; } const pend = LS.get('credPend', []); pend.push(doc); LS.set('credPend', pend); toast('Sem conexão: guardado neste aparelho e enviado quando a conexão voltar.'); return true; }
+}
+setInterval(async () => { if (!S.db || !S.db.salvarParticipante) return; const pend = LS.get('credPend', []); if (!pend.length) return; const rest = []; for (const d of pend) { try { await S.db.salvarParticipante(d); } catch { rest.push(d); } } LS.set('credPend', rest); }, 10000);
+function readPform(box) { const doc = {}; box.querySelectorAll('[data-pf]').forEach(el => { if (el.type === 'radio') { if (el.checked) doc[el.dataset.pf] = el.value; } else doc[el.dataset.pf] = el.value.trim(); }); doc.uf = (doc.uf || '').toUpperCase(); doc.presenca = {}; box.querySelectorAll('[data-pfp]').forEach(el => { doc.presenca[el.dataset.pfp] = el.checked; }); return doc; }
+function credCSV() {
+  const cols = [['ordem', 'Nº'], ['nome', 'Nome'], ['nome_cracha', 'Nome no crachá'], ['instituicao', 'Instituição'], ['tipo', 'Tipo'], ['cargo', 'Cargo'], ['estado', 'Estado que representa'], ['uf', 'UF'], ['cidade', 'Cidade'], ['email', 'E-mail'], ['telefone', 'Telefone'], ['mesa', 'Mesa'], ['d1', '16/11'], ['d2', '17/11'], ['d3', '18/11'], ['autoriza_imagem', 'Uso de imagem'], ['observacoes', 'Observações']];
+  const q = (x) => '"' + String(x ?? '').replace(/"/g, '""') + '"';
+  const rows = (S.parts || []).map(p => cols.map(([k]) => q(k === 'mesa' ? (G[p.mesa]?.papel || '') : /^d[123]$/.test(k) ? (p.presenca?.[k] ? 'Presente' : '') : p[k])).join(';'));
+  const blob = new Blob(['﻿' + [cols.map(c => q(c[1])).join(';'), ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'credenciamento_encontro_fogo.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+document.addEventListener('input', ev => { if (ev.target.id === 'credq') { S.credQ = ev.target.value; credRender(true); } });
+document.addEventListener('change', async ev => { const t = ev.target;
+  if (t.id === 'creduf') { S.credUF = t.value; credRender(); return; }
+  if (t.id === 'credmesa') { S.credMesa = t.value; credRender(); return; }
+  if (t.dataset.pmesa) { const p = (S.parts || []).find(x => String(x.id) === t.dataset.pmesa); if (p) { await savePart({ ...p, mesa: t.value }); credRender(); } } });
 document.addEventListener('click', async ev => {
   const b = ev.target.closest('button'); if (!b) return;
+  if (b.dataset.pdia) { S.credDia = b.dataset.pdia; credRender(); return; }
+  if (b.id === 'cred-novo') { S.credEdit = 'novo'; credRender(); const el = $('[data-pform="novo"] [data-pf="nome"]'); if (el) el.focus(); return; }
+  if (b.id === 'cred-csv') { credCSV(); return; }
+  if (b.dataset.pedit) { const id = Number(b.dataset.pedit); S.credEdit = S.credEdit === id ? null : id; credRender(); return; }
+  if (b.dataset.pcancel) { S.credEdit = null; credRender(); return; }
+  if (b.dataset.ppres) { const p = (S.parts || []).find(x => String(x.id) === b.dataset.ppres); if (p) { const d = credDia(); await savePart({ ...p, presenca: { ...(p.presenca || {}), [d]: !(p.presenca && p.presenca[d]) } }); credRender(); } return; }
+  if (b.dataset.psave) { const box = b.closest('[data-pform]'); const doc = readPform(box); if (b.dataset.psave !== 'novo') doc.id = Number(b.dataset.psave); if (!doc.nome) { toast('Informe o nome do participante.'); return; } if (await savePart(doc)) { S.credEdit = null; credRender(); } return; }
   if (b.dataset.hash) { if (S.pendingStage) { location.hash = b.dataset.hash + '-' + S.pendingStage; S.pendingStage = null; } else location.hash = b.dataset.hash; return; }
   if (b.id === 'login-equipe') { S.loginEquipe = true; S.screen = 'login'; render(); return; }
   if (b.id === 'voltar-mesas') { S.loginEquipe = false; S.screen = LS.get('evento', null) ? 'auto' : 'login'; render(); return; }
   if (b.id === 'sair-evento') { LS.del('evento'); leaveMesa(); S.screen = 'login'; render(); return; }
   if (SUPA && b.dataset.role === 'equipe') { S.loginEquipe = true; S.screen = 'login'; render(); return; }
-  if (b.dataset.role) { S.role = b.dataset.role; LS.set('role', S.role); S.view = null; S.dayView = null; if (S.pendingStage && S.role !== 'equipe') { S.view = S.pendingStage; S.dayView = E[S.pendingStage].dia; } S.pendingStage = null; render(); scrollTo(0, 0); return; }
+  if (b.dataset.role) { S.role = b.dataset.role; LS.set('role', S.role); S.view = null; S.dayView = null; if (S.pendingStage && !PANEL(S.role)) { S.view = S.pendingStage; S.dayView = E[S.pendingStage].dia; } S.pendingStage = null; render(); scrollTo(0, 0); return; }
   if (b.dataset.copylink) { const url = BASE + '#' + b.dataset.copylink; try { await navigator.clipboard.writeText(url); toast('Link copiado'); } catch { toast(url); } return; }
   if (b.id === 'aval-enviar') { await enviarAval(); return; }
   if (b.id === 'aval-proxima') { S.aval = {}; S.avalSent = false; render(); scrollTo(0, 0); return; }
   if (b.dataset.val && b.closest('.form[data-aval]')) { setPath(S.aval, b.dataset.k, Number(b.dataset.val)); const y = scrollY; render(); scrollTo(0, y); return; }
-  if (b.id === 'trocar') { if (SUPA && S.role !== 'equipe') { leaveMesa(); return; } if (b.dataset.armed) { S.role = null; LS.del('role'); if (SUPA) { LS.del('codigo'); location.reload(); return; } render(); return; } b.dataset.armed = '1'; b.textContent = 'Tocar de novo para trocar'; setTimeout(() => render(), 3000); return; }
+  if (b.id === 'trocar') { if (SUPA && !PANEL(S.role)) { leaveMesa(); return; } if (b.dataset.armed) { S.role = null; LS.del('role'); if (SUPA) { LS.del('codigo'); location.reload(); return; } render(); return; } b.dataset.armed = '1'; b.textContent = 'Tocar de novo para trocar'; setTimeout(() => render(), 3000); return; }
   if (b.dataset.day) { S.dayView = Number(b.dataset.day); $('.rail').innerHTML = railHTML(G[S.role]); return; }
   if (b.dataset.go) { S.view = b.dataset.go; S.dayView = E[b.dataset.go].dia; render(); scrollTo(0, 0); return; }
   if (b.dataset.val && b.closest('.form[data-doc]')) { const form = b.closest('.form'); editDoc(form, d => setPath(d, b.dataset.k, Number(b.dataset.val))); rerenderStage(); return; }
@@ -1072,12 +1157,14 @@ async function liberar(id) {
   render();
 }
 function panelHTML() {
-  const tabs = [['conducao', 'Condução'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['exportar', 'Exportar e importar']];
+  const tabs = S.role === 'unodc' ? [['credenciamento', 'Credenciamento'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['avaliacoes', 'Avaliações'], ['exportar', 'Exportar']]
+    : [['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['exportar', 'Exportar e importar']];
+  if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
   return `<div class="wrap"><div class="panel">
     ${S.mode === 'demo' ? `<div class="banner">Demonstração: libere etapas e veja as respostas deste aparelho. Nada é gravado na base do encontro.</div>` : ''}
     ${S.mode === 'local' ? `<div class="banner">Modo local: este aparelho não está sincronizando. Os tablets seguem o próprio relógio e guardam as respostas. Ao final, importe o arquivo de cada tablet na aba Exportar e importar.</div>` : ''}
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}">${l}</button>`).join('')}</div>
-    <div id="tabbody">${({ mapa: () => mapaHTML().replace('class="wrap"', 'class=""'), conducao: conducaoHTML, respostas: respostasHTML, matriz: matrizHTML, perguntas: perguntasHTML, termometro: termoHTML, avaliacoes: avaliacoesHTML, exportar: exportHTML })[S.tab]()}</div>
+    <div id="tabbody">${({ mapa: () => mapaHTML().replace('class="wrap"', 'class=""'), conducao: conducaoHTML, credenciamento: credHTML, respostas: respostasHTML, matriz: matrizHTML, perguntas: perguntasHTML, termometro: termoHTML, avaliacoes: avaliacoesHTML, exportar: exportHTML })[S.tab]()}</div>
   </div></div>`;
 }
 function afterPanel() { tick(); }
@@ -1194,7 +1281,7 @@ function importar() {
 
 // ---------- início ----------
 setSync(); route(); connect();
-setInterval(() => { tick(); if (!DEMO && S.ativaAuto && S.role && S.role !== 'equipe') { const a = activeStage(); const cur = document.querySelector('.tl li.ativa button')?.dataset.go; if (cur && cur !== a.id && !document.activeElement?.matches?.('input,textarea')) { S.view = null; render(); } } }, 15000);
+setInterval(() => { tick(); if (!DEMO && S.ativaAuto && S.role && !PANEL(S.role)) { const a = activeStage(); const cur = document.querySelector('.tl li.ativa button')?.dataset.go; if (cur && cur !== a.id && !document.activeElement?.matches?.('input,textarea')) { S.view = null; render(); } } }, 15000);
 setInterval(() => { const el = $('#clock'); const d = new Date(); el.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; }, 5000);
 // wake lock para o tablet não apagar
 (async () => { try { await navigator.wakeLock?.request('screen'); } catch {} })();
