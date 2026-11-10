@@ -2,16 +2,23 @@
 /* Base única do Encontro Técnico — usada pelo sistema dos tablets e pelos cadernos impressos.
    Horários e textos de "conteudo" e "resultado" seguem a programação oficial (Nota Conceitual). */
 (function (root) {
-  const UFS = ['Acre', 'Amapá', 'Amazonas', 'Maranhão', 'Mato Grosso', 'Pará', 'Rondônia', 'Roraima', 'Tocantins'];
+  const UFS = ['Acre', 'Amapá', 'Amazonas', 'Maranhão', 'Mato Grosso', 'Pará', 'Piauí', 'Rondônia', 'Roraima', 'Tocantins'];
   const DEST = ['INPE', 'SEMAS/PA', 'MMA', 'Ibama/Prevfogo', 'UNODC', 'Estados', 'Outra instituição'];
 
   // Grupos com as cores do fogo, mistos (estados e instituições). Todos os grupos trabalham todos os temas.
-  const GRUPOS = [
-    { id: 'brasa', nome: 'Grupo Brasa', cor: '#B3261E', papel: 'Brasa', corNome: 'vermelho', mesa: '', eixo: '' },
-    { id: 'chama', nome: 'Grupo Chama', cor: '#D9620F', papel: 'Chama', corNome: 'laranja', mesa: '', eixo: '' },
-    { id: 'labareda', nome: 'Grupo Labareda', cor: '#D69E00', papel: 'Labareda', corNome: 'amarelo', mesa: '', eixo: '' },
-    { id: 'azul', nome: 'Grupo Chama Azul', cor: '#2459B0', papel: 'Chama Azul', corNome: 'azul', mesa: '', eixo: '' },
+  // As cores se repetem quantas vezes forem necessárias; o material é o mesmo para qualquer número de grupos.
+  const CORES = [
+    { id: 'brasa', nome: 'Brasa', cor: '#B3261E', corNome: 'vermelho' },
+    { id: 'chama', nome: 'Chama', cor: '#D9620F', corNome: 'laranja' },
+    { id: 'labareda', nome: 'Labareda', cor: '#D69E00', corNome: 'amarelo' },
+    { id: 'azul', nome: 'Chama Azul', cor: '#2459B0', corNome: 'azul' },
   ];
+  const POR_COR = 1;
+  // No sistema, cada grupo é uma mesa (até 12); as cores se repetem em ciclo. Os materiais impressos usam só as CORES.
+  const MESAS = 12;
+  const GRUPOS = Array.from({ length: MESAS }, (_, i) => { const c = CORES[i % CORES.length]; const n = String(i + 1).padStart(2, '0');
+    return { id: 'mesa' + n, nome: `Grupo da Mesa ${i + 1} · ${c.nome}`, papel: `Mesa ${i + 1}`, cor: c.cor, corNome: c.corNome, base: c.id, mesa: String(i + 1), eixo: '' }; });
+  const NG = GRUPOS.length;
 
   const OBJETIVO = 'Fazer um diagnóstico das capacidades, práticas, desafios e necessidades dos estados da Amazônia Legal na agenda do fogo, relacionando as demandas estaduais às competências e soluções das instituições participantes e construindo uma agenda regional de cooperação, aprimoramento de produtos, interoperabilidade de sistemas e capacitação.';
   const OBJ_ESP = [
@@ -71,7 +78,7 @@
       conteudo: 'Apresentação conjunta SEMAS–INPE dos resultados de setembro e do panorama obtido no levantamento prévio: estruturas, fluxos, demandas, soluções, lacunas e prioridades.',
       resultado: 'Aprendizados do diagnóstico-piloto e linha de base regional apresentados.',
       papel: 'Registrar, durante a apresentação, o que o grupo leva de Belém para o próprio território.',
-      passos: [{ min: 40, txt: 'Ouvir: durante a apresentação, o líder anota o que o grupo destaca. Ler e enviar: no último minuto, o líder lê o registro em voz baixa para o grupo e envia.' }],
+      passos: [{ min: 40, txt: 'Ouvir: durante a apresentação, o líder anota o que o grupo destaca. Ler e entregar: no último minuto, o líder lê o registro em voz baixa para o grupo e entrega.' }],
       campos: [
         { k: 'pontos', t: 'area', l: 'Pontos-chave da apresentação', rows: 4 },
         { k: 'aprendizados', t: 'area', l: 'Aprendizados de Belém úteis para nossos estados', rows: 3 },
@@ -99,11 +106,11 @@
     { id: 'd1-almoco', dia: 1, ini: '12:20', fim: '13:30', sessao: 'Almoço', tipo: 'pausa' },
     { id: 'd1-estados2', dia: 1, ini: '13:30', fim: '15:15', sessao: 'Estados · bloco 2', tipo: 'plenaria', quem: 'Quatro estados (15 min cada)',
       conteudo: 'Apresentações dos quatro estados restantes, com 15 minutos por estado, seguidas de diálogo comparativo e consolidação dos pontos comuns e específicos.',
-      resultado: 'Diagnóstico comparativo dos nove estados concluído.',
+      resultado: 'Diagnóstico comparativo dos estados concluído.',
       papel: 'Uma ficha por estado e, no diálogo, o que é comum e o que é específico.',
       passos: [
         { min: 60, txt: 'Ouvir: quatro apresentações de 15 minutos. O líder preenche um quadro por estado.' },
-        { min: 45, txt: 'Diálogo comparativo, com o Termômetro ao fim de cada estado. O líder completa os pontos comuns e específicos, lê para o grupo e envia.' },
+        { min: 45, txt: 'Diálogo comparativo, com o Termômetro ao fim de cada estado. O líder completa os pontos comuns e específicos, lê para o grupo e entrega.' },
       ],
       campos: [
         { k: 'estados', t: 'repeat', n: 4, item: 'Estado', f: [
@@ -114,7 +121,7 @@
           { k: 'demanda', t: 'area', l: 'Demanda apresentada', rows: 2 },
           { k: 'semelhanca', t: 'choice', l: 'Em relação aos estados do nosso grupo', o: ['Realidade igual', 'Parecida', 'Diferente'] },
         ] },
-        { k: 'comuns', t: 'area', l: 'Pontos comuns aos nove estados', rows: 2 },
+        { k: 'comuns', t: 'area', l: 'Pontos comuns aos estados', rows: 2 },
         { k: 'especificos', t: 'area', l: 'Pontos específicos de cada território', rows: 2 },
       ] },
     { id: 'd1-int2', dia: 1, ini: '15:15', fim: '15:30', sessao: 'Intervalo', tipo: 'pausa' },
@@ -126,7 +133,7 @@
         { min: 5, txt: 'Abrir: o grupo escolhe o líder deste exercício. O líder lê o que o exercício pede e os quatro temas.' },
         { min: 40, txt: 'Ouvir e registrar, 10 minutos por tema: dados e metodologias; sistemas e interoperabilidade; uso operacional e comunicação; capacitação e cooperação. Em cada tema, rodada rápida com o principal desafio de cada estado ou instituição; o líder registra o desafio e a demanda que o grupo escolher.' },
         { min: 15, txt: 'Conversar: o grupo marca a prioridade de cada demanda e escreve 2 perguntas para o Dia 2.' },
-        { min: 5, txt: 'Ler e enviar: o líder lê o registro em voz alta, o grupo confirma, define o porta-voz e envia.' },
+        { min: 5, txt: 'Ler e entregar: o líder lê o registro em voz alta, o grupo confirma, define o porta-voz e entrega.' },
       ],
       campos: [
         { k: 'demandas', t: 'repeat', n: 4, item: 'Tema', titles: ['Dados e metodologias', 'Sistemas e interoperabilidade', 'Uso operacional e comunicação', 'Capacitação e cooperação'], f: [
@@ -164,29 +171,29 @@
       conteudo: 'Apresentação do ambiente de computação em nuvem do INPE, suas bases de dados, serviços e possibilidades de uso pelos estados.',
       resultado: 'Capacidades do Brazil Data Cube relacionadas às demandas regionais.',
       papel: 'Ligar o que é apresentado às demandas do Dia 1.',
-      passos: [{ min: 20, txt: 'Ouvir e registrar: durante a apresentação, o líder preenche a ficha. No último minuto, lê para o grupo e envia.' }], campos: conexao() },
+      passos: [{ min: 20, txt: 'Ouvir e registrar: durante a apresentação, o líder preenche a ficha. No último minuto, lê para o grupo e entrega.' }], campos: conexao() },
     { id: 'd2-sala', dia: 2, ini: '09:30', fim: '09:50', sessao: 'INPE · Sala de Situação', tipo: 'plenaria', quem: 'INPE',
       conteudo: 'Apresentação da estrutura, dos fluxos, dos produtos e das possibilidades de apoio ao acompanhamento e à tomada de decisão.',
       resultado: 'Possibilidades de uso e cooperação identificadas.',
       papel: 'Ligar o que é apresentado às demandas do Dia 1.',
-      passos: [{ min: 20, txt: 'Ouvir e registrar: durante a apresentação, o líder preenche a ficha. No último minuto, lê para o grupo e envia.' }], campos: conexao() },
+      passos: [{ min: 20, txt: 'Ouvir e registrar: durante a apresentação, o líder preenche a ficha. No último minuto, lê para o grupo e entrega.' }], campos: conexao() },
     { id: 'd2-biomas', dia: 2, ini: '09:50', fim: '10:10', sessao: 'INPE · Monitoramento dos Biomas', tipo: 'plenaria', quem: 'INPE (Cláudio Almeida)',
       conteudo: 'Apresentação sobre o monitoramento dos biomas brasileiros, incluindo produtos, metodologias e aplicações relevantes para os estados.',
       resultado: 'Produtos de monitoramento relacionados às necessidades estaduais.',
       papel: 'Ligar o que é apresentado às demandas do Dia 1.',
-      passos: [{ min: 20, txt: 'Ouvir e registrar: durante a apresentação, o líder preenche a ficha. No último minuto, lê para o grupo e envia.' }], campos: conexao() },
+      passos: [{ min: 20, txt: 'Ouvir e registrar: durante a apresentação, o líder preenche a ficha. No último minuto, lê para o grupo e entrega.' }], campos: conexao() },
     { id: 'd2-queimadas', dia: 2, ini: '10:10', fim: '10:40', sessao: 'INPE · Programa Queimadas', tipo: 'plenaria', quem: 'INPE',
       conteudo: 'Apresentação dos dados, produtos, metodologias, sistemas e serviços do Programa Queimadas, com ênfase nas aplicações para monitoramento, prevenção, fiscalização e resposta.',
       resultado: 'Soluções do tema central do encontro analisadas à luz das demandas regionais.',
       papel: 'Ligar o que é apresentado às demandas do Dia 1.',
-      passos: [{ min: 30, txt: 'Ouvir e registrar: durante a apresentação, o líder preenche a ficha. No último minuto, lê para o grupo e envia.' }], campos: conexao() },
+      passos: [{ min: 30, txt: 'Ouvir e registrar: durante a apresentação, o líder preenche a ficha. No último minuto, lê para o grupo e entrega.' }], campos: conexao() },
     { id: 'd2-int1', dia: 2, ini: '10:40', fim: '10:55', sessao: 'Intervalo', tipo: 'pausa' },
     { id: 'd2-sisfogo', dia: 2, ini: '10:55', fim: '12:30', sessao: 'SISFOGO e ADPF nº 743', tipo: 'plenaria', quem: 'MMA, Ibama/Prevfogo e áreas técnicas',
       conteudo: 'MMA, Ibama/Prevfogo e áreas técnicas apresentam finalidade, arquitetura, dados, requisitos, protocolos e caminhos de adesão ou interoperabilidade do SISFOGO com sistemas estaduais.',
       resultado: 'Requisitos, responsabilidades e caminhos de integração compreendidos; lacunas registradas.',
       nota: 'Na programação, esta sessão aparece em dois horários com o mesmo texto (10h55–11h15 e 11h15–12h30). O sistema trata como um bloco único até a confirmação da organização.',
       papel: 'Registrar requisitos de integração e o que falta para os estados aderirem.',
-      passos: [{ min: 95, txt: 'Ouvir e registrar: durante a sessão, o líder registra requisitos, responsabilidades e lacunas. Ao final, lê para o grupo e envia.' }],
+      passos: [{ min: 95, txt: 'Ouvir e registrar: durante a sessão, o líder registra requisitos, responsabilidades e lacunas. Ao final, lê para o grupo e entrega.' }],
       campos: [
         { k: 'requisitos', t: 'area', l: 'Requisitos e protocolos de integração apresentados', rows: 2 },
         { k: 'responsabilidades', t: 'area', l: 'Responsabilidades: quem faz o quê', rows: 2 },
@@ -221,7 +228,7 @@
         { min: 5, txt: 'Abrir: escolher o líder deste exercício. O líder apresenta as 5 categorias e as demandas do grupo.' },
         { min: 45, txt: 'Conversar: para cada demanda, o líder lê, o grupo decide a categoria e indica quem pode atender. Na dúvida, consultar o técnico do grupo.' },
         { min: 15, txt: 'Registrar: anotar a lacuna que permanece e, nas demandas de integração com o SISFOGO, o requisito.' },
-        { min: 5, txt: 'Ler e enviar: o líder lê o registro em voz alta, o grupo confirma, define o porta-voz e envia.' },
+        { min: 5, txt: 'Ler e entregar: o líder lê o registro em voz alta, o grupo confirma, define o porta-voz e entrega.' },
       ],
       campos: [
         { k: 'itens', t: 'clinica', n: 8, l: 'Classificação das demandas', o: ['Solução existente', 'Ajuste ou desenvolvimento', 'Integração com o SISFOGO', 'Articulação institucional', 'Capacitação'] },
@@ -259,9 +266,9 @@
       papel: 'O grupo dá nota de 1 a 3 a cada demanda, em cada critério, e define o horizonte.',
       passos: [
         { min: 5, txt: 'Abrir: escolher o líder deste exercício. O líder apresenta os 6 critérios e a escala de 1 a 3.' },
-        { min: 50, txt: 'Conversar: para cada demanda, o líder lê um critério por vez e o grupo combina a nota. O tablet soma o total.' },
+        { min: 50, txt: 'Conversar: para cada demanda, o líder lê um critério por vez e o grupo combina a nota. O líder soma o total.' },
         { min: 10, txt: 'Registrar: definir o horizonte de cada demanda (curto, médio ou longo prazo).' },
-        { min: 5, txt: 'Ler e enviar: o líder lê as 3 demandas com maior pontuação, o grupo confirma e envia.' },
+        { min: 5, txt: 'Ler e entregar: o líder lê as 3 demandas com maior pontuação, o grupo confirma e entrega.' },
       ],
       campos: [{ k: 'itens', t: 'priorizacao', n: 8, l: 'Pontuação das demandas',
         crit: ['Relevância regional', 'Urgência', 'Impacto operacional', 'Viabilidade', 'Abrangência', 'Dependências'],
@@ -275,7 +282,7 @@
         { min: 5, txt: 'Abrir: escolher o líder deste exercício. O líder lê as demandas priorizadas pelo grupo e os cinco eixos.' },
         { min: 60, txt: 'Conversar e registrar: ao menos uma ação por eixo, com o que fazer, horizonte, responsável, parceiros, produto e prazo indicativo.' },
         { min: 20, txt: 'Validação em plenária: cada grupo apresenta suas ações em 5 minutos.' },
-        { min: 5, txt: 'Ler e enviar: registrar os ajustes da plenária, confirmar com o grupo e enviar.' },
+        { min: 5, txt: 'Ler e entregar: registrar os ajustes da plenária, confirmar com o grupo e entregar.' },
       ],
       campos: [
         { k: 'acoes', t: 'repeat', n: 6, item: 'Ação', f: [
@@ -293,7 +300,7 @@
       conteudo: 'Avaliação breve, compromissos imediatos e encerramento institucional.', resultado: 'Agenda de continuidade formalizada.',
       papel: 'O líder registra os compromissos do grupo. A avaliação é individual: cada participante responde a sua.',
       passos: [
-        { min: 5, txt: 'Avaliação individual: cada participante responde a ficha impressa ou o link de avaliação individual.' },
+        { min: 5, txt: 'Avaliação individual: cada participante responde a ficha impressa.' },
         { min: 5, txt: 'Compromissos imediatos do grupo, registrados pelo líder.' },
         { min: 5, txt: 'Encerramento institucional.' },
       ],
@@ -316,32 +323,32 @@
   const OVR = {
     'd1-credenciamento': { passos: [{ min: 30, txt: 'Cada pessoa senta na mesa da cor do seu crachá. O grupo escolhe o líder do primeiro exercício, que registra quem está presente.' }],
       campos: [{ k: 'lider', t: 'line', l: 'Líder do primeiro exercício', h: 'A liderança pode mudar a cada exercício' }, { k: 'estados', t: 'multi', l: 'Estados presentes no grupo', o: UFS }, { k: 'pessoas', t: 'line', l: 'Número de pessoas no grupo' }] },
-    'd1-belem': { passos: [{ min: 40, txt: 'Ouvir a apresentação. O líder anota o que o grupo destaca e, no último minuto, lê para o grupo e envia.' }],
+    'd1-belem': { passos: [{ min: 40, txt: 'Ouvir a apresentação. O líder anota o que o grupo destaca e, no último minuto, lê para o grupo e entrega.' }],
       campos: [{ k: 'leva', t: 'area', l: 'O que levamos de Belém para os nossos estados', rows: 4 }, { k: 'diferente', t: 'area', l: 'O que é diferente na nossa realidade', rows: 3 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo (indique para quem)', rows: 2 }] },
-    'd1-estados1': { passos: [{ min: 75, txt: 'Ouvir as cinco apresentações. O líder preenche um quadro por estado.' }, { min: 45, txt: 'Diálogo orientado, com o Termômetro de Convergência ao fim de cada estado. O líder revisa e envia.' }],
+    'd1-estados1': { passos: [{ min: 75, txt: 'Ouvir as cinco apresentações. O líder preenche um quadro por estado.' }, { min: 45, txt: 'Diálogo orientado, com o Termômetro de Convergência ao fim de cada estado. O líder revisa e entrega.' }],
       campos: [{ k: 'estados', t: 'repeat', n: 5, item: 'Estado', f: [{ k: 'uf', t: 'select', l: 'Estado', o: UFS }, { k: 'destaque', t: 'area', l: 'Destaque (PMIF, sala de situação, dados, sistemas)', rows: 2 }, { k: 'desafio', t: 'area', l: 'Principal desafio', rows: 2 }, { k: 'demanda', t: 'line', l: 'Demanda apresentada' }] }] },
-    'd1-estados2': { passos: [{ min: 60, txt: 'Ouvir as quatro apresentações. O líder preenche um quadro por estado.' }, { min: 45, txt: 'Diálogo comparativo, com o Termômetro ao fim de cada estado. O grupo combina o que é comum aos nove estados; o líder registra e envia.' }],
-      campos: [{ k: 'estados', t: 'repeat', n: 4, item: 'Estado', f: [{ k: 'uf', t: 'select', l: 'Estado', o: UFS }, { k: 'destaque', t: 'area', l: 'Destaque (PMIF, sala de situação, dados, sistemas)', rows: 2 }, { k: 'desafio', t: 'area', l: 'Principal desafio', rows: 2 }, { k: 'demanda', t: 'line', l: 'Demanda apresentada' }] }, { k: 'comuns', t: 'area', l: 'O que é comum aos nove estados', rows: 3 }] },
+    'd1-estados2': { passos: [{ min: 60, txt: 'Ouvir as quatro apresentações. O líder preenche um quadro por estado.' }, { min: 45, txt: 'Diálogo comparativo, com o Termômetro ao fim de cada estado. O grupo combina o que é comum aos estados; o líder registra e entrega.' }],
+      campos: [{ k: 'estados', t: 'repeat', n: 4, item: 'Estado', f: [{ k: 'uf', t: 'select', l: 'Estado', o: UFS }, { k: 'destaque', t: 'area', l: 'Destaque (PMIF, sala de situação, dados, sistemas)', rows: 2 }, { k: 'desafio', t: 'area', l: 'Principal desafio', rows: 2 }, { k: 'demanda', t: 'line', l: 'Demanda apresentada' }] }, { k: 'comuns', t: 'area', l: 'O que é comum aos estados', rows: 3 }] },
     'd1-grupos': { papel: 'Todos os grupos passam pelos quatro temas. Cada pessoa fala a partir da realidade do seu estado ou instituição.',
-      passos: [{ min: 5, txt: 'Escolher o líder e ler o que o exercício pede.' }, { min: 48, txt: 'Quatro temas, 12 minutos cada: rodada de 1 minuto por pessoa (cronômetro no tablet) e, em seguida, o grupo escolhe uma demanda; o líder registra.' }, { min: 12, txt: 'Marcar a prioridade das demandas, escrever as perguntas para o Dia 2, ler em voz alta e enviar.' }],
+      passos: [{ min: 5, txt: 'Escolher o líder e ler o que o exercício pede.' }, { min: 48, txt: 'Quatro temas, 12 minutos cada: rodada de 1 minuto por pessoa (o líder marca o tempo) e, em seguida, o grupo escolhe uma demanda; o líder registra.' }, { min: 12, txt: 'Marcar a prioridade das demandas, escrever as perguntas para o Dia 2, ler em voz alta e entregar.' }],
       campos: [{ k: 'demandas', t: 'repeat', n: 4, item: 'Tema', titles: T4, f: [{ k: 'desafio', t: 'area', l: 'Principal desafio apontado pelo grupo', rows: 2 }, { k: 'problema', t: 'area', l: 'Demanda: o que precisamos', rows: 2 }, { k: 'prioridade', t: 'choice', l: 'Prioridade', o: ['Alta', 'Média', 'Baixa'] }] }, { k: 'pergunta', t: 'area', l: 'Perguntas para o Dia 2 (indique para quem)', rows: 3 }, { k: 'portavoz', t: 'line', l: 'Porta-voz na síntese do dia' }] },
     'd1-sintese': { campos: [{ k: 'ajustes', t: 'area', l: 'Ajustes e perguntas novas que surgiram na plenária', rows: 4 }] },
-    'd2-sisfogo': { passos: [{ min: 95, txt: 'Ouvir a sessão. O líder registra o que os estados precisam fazer para se integrar e o que falta; no final, lê para o grupo e envia.' }],
+    'd2-sisfogo': { passos: [{ min: 95, txt: 'Ouvir a sessão. O líder registra o que os estados precisam fazer para se integrar e o que falta; no final, lê para o grupo e entrega.' }],
       campos: [{ k: 'precisa', t: 'area', l: 'O que os estados precisam fazer para se integrar ao SISFOGO', rows: 4 }, { k: 'falta', t: 'area', l: 'O que falta ou dificulta a integração', rows: 3 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo', rows: 2 }] },
-    'd2-aplicacoes': { passos: [{ min: 75, txt: 'Ouvir até cinco apresentações. O líder preenche um quadro por instituição.' }, { min: 15, txt: 'Diálogo final de convergência. O líder revisa e envia.' }],
+    'd2-aplicacoes': { passos: [{ min: 75, txt: 'Ouvir até cinco apresentações. O líder preenche um quadro por instituição.' }, { min: 15, txt: 'Diálogo final de convergência. O líder revisa e entrega.' }],
       campos: [{ k: 'inst', t: 'repeat', n: 5, item: 'Instituição', compact: true, f: [{ k: 'nome', t: 'line', l: 'Instituição' }, { k: 'uso', t: 'area', l: 'Como usa a informação e o que precisa receber', rows: 2 }] }] },
-    'd2-clinicas': { passos: [{ min: 5, txt: 'Escolher o líder e ler as 5 categorias.' }, { min: 55, txt: 'Para cada demanda do grupo: o líder lê, o grupo decide a categoria e indica quem pode atender e o que ainda falta.' }, { min: 10, txt: 'Ler em voz alta, definir o porta-voz e enviar.' }] },
+    'd2-clinicas': { passos: [{ min: 5, txt: 'Escolher o líder e ler as 5 categorias.' }, { min: 55, txt: 'Para cada demanda do grupo: o líder lê, o grupo decide a categoria e indica quem pode atender e o que ainda falta.' }, { min: 10, txt: 'Ler em voz alta, definir o porta-voz e entregar.' }] },
     'd2-painel': { campos: [{ k: 'comuns', t: 'area', l: 'Demandas comuns a mais de um grupo', rows: 3 }, { k: 'semresposta', t: 'area', l: 'O que ainda está sem resposta', rows: 3 }] },
     'd3-sintese': { passos: [{ min: 20, txt: 'Apresentação da matriz consolidada.' }, { min: 10, txt: 'O grupo confere as próprias demandas e registra ajustes.' }] },
-    'd3-priorizacao': { passos: [{ min: 5, txt: 'Escolher o líder e ler os 6 critérios.' }, { min: 55, txt: 'Para cada demanda, o grupo combina uma nota de 1 a 3 em cada critério e o horizonte. O tablet soma o total.' }, { min: 10, txt: 'Ler as 3 demandas mais pontuadas e enviar.' }] },
+    'd3-priorizacao': { passos: [{ min: 5, txt: 'Escolher o líder e ler os 6 critérios.' }, { min: 55, txt: 'Para cada demanda, o grupo combina uma nota de 1 a 3 em cada critério e o horizonte. O líder soma o total.' }, { min: 10, txt: 'Ler as 3 demandas mais pontuadas e entregar.' }] },
     'd3-plano': { papel: 'O grupo transforma as demandas priorizadas em ações pelo método 5W2H, uma ação por eixo.',
-      passos: [{ min: 5, txt: 'Escolher o líder e ler o 5W2H.' }, { min: 60, txt: 'Uma ação por eixo, 12 minutos cada: o quê, por quê, quem, onde, quando, como e quanto.' }, { min: 20, txt: 'Validação em plenária: cada grupo apresenta em 5 minutos.' }, { min: 5, txt: 'Registrar os ajustes da plenária e enviar.' }],
+      passos: [{ min: 5, txt: 'Escolher o líder e ler o 5W2H.' }, { min: 60, txt: 'Uma ação por eixo, 12 minutos cada: o quê, por quê, quem, onde, quando, como e quanto.' }, { min: 20, txt: 'Validação em plenária: cada grupo apresenta em 5 minutos.' }, { min: 5, txt: 'Registrar os ajustes da plenária e entregar.' }],
       campos: [{ k: 'acoes', t: 'repeat', n: 5, item: 'Eixo', titles: ['Dados', 'Funcionalidades', 'Capacitações', 'Cooperação', 'Interoperabilidade (trilha SISFOGO/ADPF nº 743)'], f: [
         { k: 'oque', t: 'area', l: 'O quê (What): a ação', rows: 1 }, { k: 'porque', t: 'line', l: 'Por quê (Why): a demanda que resolve' }, { k: 'quem', t: 'line', l: 'Quem (Who): instituição responsável e parceiros' },
         { k: 'onde', t: 'line', l: 'Onde (Where): estados ou territórios' }, { k: 'quando', t: 'line', l: 'Quando (When): prazo indicativo' }, { k: 'como', t: 'line', l: 'Como (How): primeiros passos' }, { k: 'quanto', t: 'line', l: 'Quanto (How much): recursos ou fonte' }] }] },
     'd3-encerramento': { campos: [{ k: 'compromissos', t: 'area', l: 'Compromissos imediatos do grupo', rows: 3 }] },
   };
-  ['d2-bdc', 'd2-sala', 'd2-biomas', 'd2-queimadas'].forEach(id => { OVR[id] = { passos: [{ min: ETAPAS.find(e => e.id === id).passos[0].min, txt: 'Ouvir a apresentação. O líder registra o que serve para os estados do grupo e o que falta; no último minuto, lê e envia.' }],
+  ['d2-bdc', 'd2-sala', 'd2-biomas', 'd2-queimadas'].forEach(id => { OVR[id] = { passos: [{ min: ETAPAS.find(e => e.id === id).passos[0].min, txt: 'Ouvir a apresentação. O líder registra o que serve para os estados do grupo e o que falta; no último minuto, lê e entrega.' }],
     campos: [{ k: 'serve', t: 'area', l: 'O que serve para os nossos estados', rows: 3 }, { k: 'falta', t: 'area', l: 'O que ainda falta', rows: 2 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo', rows: 1 }] }; });
 
   // ---------- Cronograma atualizado ----------
@@ -349,33 +356,38 @@
   const CAT6 = ['Inexistente, a ser desenvolvida', 'Existente e suficiente', 'Existente, mas necessita de ajustes', 'Existente, mas dependente de integração com o SISFOGO', 'Existente, mas dependente de articulação institucional', 'Existente, mas necessita de capacitação'];
   Object.assign(OVR['d1-estados1'], { quem: 'Cinco estados (20 min cada)',
     conteudo: 'Apresentações de 5 estados (20 minutos por estado) + 20 minutos de perguntas e discussões.',
-    passos: [{ min: 100, txt: 'Ouvir as cinco apresentações, 20 minutos cada. O líder preenche um quadro por estado. Termômetro de Convergência ao fim de cada estado (30 segundos).' }, { min: 20, txt: 'Perguntas e discussões. O líder revisa o registro e envia.' }] });
+    passos: [{ min: 100, txt: 'Ouvir as cinco apresentações, 20 minutos cada. O líder preenche um quadro por estado. Termômetro de Convergência ao fim de cada estado (30 segundos).' }, { min: 20, txt: 'Perguntas e discussões. O líder revisa o registro e entrega.' }] });
   Object.assign(OVR['d1-estados2'], { ini: '13:30', fim: '15:10', quem: 'Quatro estados (20 min cada)',
     conteudo: 'Apresentações de 4 estados (20 minutos por estado) + 20 minutos de perguntas e discussões.',
-    passos: [{ min: 80, txt: 'Ouvir as quatro apresentações, 20 minutos cada. O líder preenche um quadro por estado. Termômetro ao fim de cada estado.' }, { min: 20, txt: 'Perguntas e discussões. O grupo combina o que é comum aos nove estados; o líder registra e envia.' }] });
+    passos: [{ min: 80, txt: 'Ouvir as quatro apresentações, 20 minutos cada. O líder preenche um quadro por estado. Termômetro ao fim de cada estado.' }, { min: 20, txt: 'Perguntas e discussões. O grupo combina o que é comum aos estados; o líder registra e entrega.' }] });
+  OVR['d1-estados2'].campos[0] = { ...OVR['d1-estados2'].campos[0], n: 5, h: 'O quinto quadro fica reservado para o Piauí ou outro estado, caso a programação inclua mais uma apresentação.' };
   OVR['d1-int2'] = { ini: '15:10', fim: '15:30' };
   Object.assign(OVR['d1-grupos'], { conteudo: 'Divisão em grupos para discutir os temas: dados e metodologias; sistemas e interoperabilidade; uso operacional; cooperação institucional; capacitação.',
     papel: 'Todos os grupos passam pelos cinco temas. Cada pessoa fala a partir da realidade do seu estado ou instituição.',
-    passos: [{ min: 5, txt: 'Escolher o líder e ler o que o exercício pede.' }, { min: 50, txt: 'Cinco temas, 10 minutos cada: rodada de 1 minuto por pessoa (cronômetro no tablet) e o grupo escolhe uma demanda; o líder registra.' }, { min: 10, txt: 'Marcar a prioridade das demandas, escrever as perguntas para o Dia 2, ler em voz alta e enviar.' }] });
+    passos: [{ min: 5, txt: 'Escolher o líder e ler o que o exercício pede.' }, { min: 50, txt: 'Cinco temas, 10 minutos cada: rodada com uma fala de até 1 minuto por estado ou instituição presente (o líder marca o tempo) e o grupo escolhe uma demanda; o líder registra.' }, { min: 10, txt: 'Marcar a prioridade das demandas, escrever as perguntas para o Dia 2, ler em voz alta e entregar.' }] });
   OVR['d1-grupos'].campos[0] = { ...OVR['d1-grupos'].campos[0], n: 5, titles: T5 };
   OVR['d1-sintese'] = { ...(OVR['d1-sintese'] || {}), conteudo: 'Consolidação das contribuições das apresentações; formulação das questões a serem respondidas pelo INPE e pelas demais instituições.' };
   OVR['d2-int1'] = { ini: '10:40', fim: '11:00' };
   Object.assign(OVR['d2-aplicacoes'], { ini: '11:00', fim: '12:30', quem: 'MMA, Ibama/Prevfogo e ICMBio (20 min cada)',
     conteudo: 'Apresentações do MMA, Ibama/Prevfogo e ICMBio (20 minutos cada) sobre usos da informação, necessidades de compartilhamento e resultados esperados + 30 minutos de diálogo final para convergência.',
-    passos: [{ min: 60, txt: 'Ouvir as três apresentações, 20 minutos cada. O líder preenche um quadro por instituição.' }, { min: 30, txt: 'Diálogo final de convergência. O líder revisa e envia.' }],
+    passos: [{ min: 60, txt: 'Ouvir as três apresentações, 20 minutos cada. O líder preenche um quadro por instituição.' }, { min: 30, txt: 'Diálogo final de convergência. O líder revisa e entrega.' }],
     campos: [{ k: 'inst', t: 'repeat', n: 3, item: 'Instituição', titles: ['MMA', 'Ibama/Prevfogo', 'ICMBio'], f: [{ k: 'uso', t: 'area', l: 'Como usa a informação e o que precisa receber dos estados', rows: 3 }] }] });
   Object.assign(OVR['d2-sisfogo'], { ini: '13:40', fim: '15:10', quem: 'MMA, ICMBio, Ibama/Prevfogo e áreas técnicas',
     conteudo: 'MMA, ICMBio, Ibama/Prevfogo e áreas técnicas apresentam finalidade, arquitetura, dados, requisitos, protocolos e caminhos de adesão ou interoperabilidade do SISFOGO com sistemas estaduais.',
     nota: 'Na programação, esta sessão aparece em dois blocos com o mesmo texto (13h40–14h25 e 14h25–15h10). O sistema trata como um exercício único.',
-    passos: [{ min: 90, txt: 'Ouvir a sessão. O líder registra o que os estados precisam fazer para se integrar e o que falta; no final, lê para o grupo e envia.' }] });
+    passos: [{ min: 90, txt: 'Ouvir a sessão. O líder registra o que os estados precisam fazer para se integrar e o que falta; no final, lê para o grupo e entrega.' }] });
   Object.assign(OVR['d2-clinicas'], { conteudo: 'Grupos mistos identificam e classificam demandas entre: inexistente, a ser desenvolvida; existente e suficiente; existente, mas que necessita de ajustes; existente, mas dependente de integração com o SISFOGO; existente, mas dependente de articulação institucional; existente, mas necessita de capacitação.',
-    passos: [{ min: 5, txt: 'Escolher o líder e ler as 6 categorias.' }, { min: 55, txt: 'Para cada demanda do grupo: o líder lê, o grupo decide a categoria e indica quem pode atender e o que ainda falta.' }, { min: 10, txt: 'Ler em voz alta, definir o porta-voz e enviar.' }] });
+    passos: [{ min: 5, txt: 'Escolher o líder e ler as 6 categorias.' }, { min: 55, txt: 'Para cada demanda do grupo: o líder lê, o grupo decide a categoria e indica quem pode atender e o que ainda falta.' }, { min: 10, txt: 'Ler em voz alta, definir o porta-voz e entregar.' }] });
   OVR['d2-clinicas'].catOverride = CAT6;
 
+
+  // ---------- Levantamento prévio (questionário respondido pelos estados) ----------
+  const LINHAS = ['Focos de calor', 'Áreas queimadas', 'Prevenção', 'Manejo Integrado do Fogo', 'Queima prescrita ou controlada', 'Fiscalização', 'Educação ambiental', 'Planejamento territorial', 'Resposta e combate', 'Recuperação de áreas'];
+  const DADOS12 = ['focos de calor em tempo real', 'áreas queimadas', 'cobertura e uso da terra', 'desmatamento', 'meteorologia e previsão', 'seca e indicadores climáticos', 'CAR', 'unidades de conservação', 'terras indígenas', 'assentamentos', 'infraestrutura e logística de resposta', 'histórico de incêndios'];
   // ---------- Profundidade técnica: perguntas orientadoras por tema e campos da matriz ----------
   const G5 = [
-    ['Que dados sobre fogo o estado usa hoje (focos, área queimada, risco, meteorologia) e com que frequência e resolução?', 'Há séries históricas e metodologias padronizadas para comparar anos e municípios?', 'Que dado, se existisse amanhã, mudaria a decisão do estado?'],
-    ['Que sistemas estaduais existem para o fogo e quem os mantém?', 'Eles trocam dados com sistemas federais (Programa Queimadas, SISFOGO)? Em que formato?', 'O que impede a integração: padrão de dados, API, infraestrutura ou acordo?'],
+    ['Dos 12 conjuntos de dados do levantamento prévio (focos em tempo real, áreas queimadas, uso da terra, desmatamento, meteorologia, seca, CAR, UCs, TIs, assentamentos, logística, histórico), quais o estado usa e quais faltam?', 'Há séries históricas e metodologias padronizadas para comparar anos e municípios?', 'Que dado, se existisse amanhã, mudaria a decisão do estado?'],
+    ['Que sistemas estaduais existem para o fogo e quem os mantém? No levantamento, a integração com sistemas federais foi marcada como sim, não ou parcial: por quê?', 'Eles trocam dados com sistemas federais (Programa Queimadas, SISFOGO)? Em que formato?', 'O que impede a integração: padrão de dados, API, infraestrutura ou acordo?'],
     ['Como o dado chega a quem decide e a quem está em campo (brigadas, fiscalização, defesa civil)?', 'Em quanto tempo o alerta vira ação?', 'Que painéis, alertas ou relatórios faltam na rotina operacional?'],
     ['Que acordos existem entre estado, órgãos federais, municípios e outras instituições?', 'Onde há sobreposição ou vazio de competências?', 'Que articulação destravaria uma demanda do grupo?'],
     ['Que competências faltam nas equipes (geoprocessamento, uso de plataformas, análise de dados)?', 'Quem precisa ser capacitado: técnicos, gestores ou equipes de campo?', 'Que formato funciona melhor: curso, mentoria, material de referência?'],
@@ -386,7 +398,14 @@
     { k: 'usuario', t: 'line', l: 'Para quem e para quê', h: 'Quem usa e com que finalidade' },
     { k: 'competente', t: 'line', l: 'Quem pode atender', h: 'Instituição, produto ou sistema' },
     { k: 'prioridade', t: 'choice', l: 'Prioridade', o: ['Alta', 'Média', 'Baixa'] }] };
-  const ESTADO_F = [{ k: 'uf', t: 'select', l: 'Estado', o: UFS }, { k: 'destaque', t: 'area', l: 'Como trabalha: PMIF, sala de situação, dados e sistemas', rows: 3 }, { k: 'desafio', t: 'area', l: 'Principal desafio', rows: 2 }, { k: 'pratica', t: 'line', l: 'Prática que vale compartilhar' }, { k: 'demanda', t: 'area', l: 'Demanda apresentada', rows: 2 }];
+  const ESTADO_F = [{ k: 'uf', t: 'select', l: 'Estado', o: UFS },
+    { k: 'programas', t: 'area', l: 'Programas e ações de gestão integrada do fogo: iniciativas, objetivos e instituições envolvidas', rows: 2 },
+    { k: 'linhas', t: 'multi', l: 'Linhas de ação citadas na apresentação', o: LINHAS },
+    { k: 'ferramentas', t: 'line', l: 'Ferramentas e sistemas mais usados (satélite, painéis, drones, aplicativos, sistemas estaduais e federais)' },
+    { k: 'integracao', t: 'choice', l: 'Integração com sistemas federais e de outras instituições', o: ['Sim', 'Parcial', 'Não', 'Não informado'] },
+    { k: 'desafio', t: 'area', l: 'Principal desafio, incluindo dificuldades de acesso, integração ou uso de dados', rows: 2 },
+    { k: 'pratica', t: 'line', l: 'Prática que vale compartilhar' },
+    { k: 'demanda', t: 'area', l: 'Demanda apresentada', rows: 2 }];
   OVR['d1-estados1'].campos[0].f = ESTADO_F; OVR['d1-estados2'].campos[0].f = ESTADO_F;
   OVR['d1-belem'].campos = [{ k: 'leva', t: 'area', l: 'O que levamos de Belém para os nossos estados', rows: 4 }, { k: 'lacunas', t: 'area', l: 'Lacunas e prioridades apontadas no levantamento que também são nossas', rows: 3 }, { k: 'diferente', t: 'area', l: 'O que é diferente na nossa realidade', rows: 2 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo (indique para quem)', rows: 2 }];
   ['d2-bdc', 'd2-sala', 'd2-biomas', 'd2-queimadas'].forEach(id => { OVR[id].campos = [{ k: 'serve', t: 'area', l: 'O que serve para os nossos estados', rows: 3 }, { k: 'condicao', t: 'area', l: 'Condição para usarmos (acesso, capacitação, infraestrutura, acordo)', rows: 2 }, { k: 'falta', t: 'area', l: 'O que ainda falta', rows: 2 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo', rows: 1 }]; });
@@ -394,6 +413,15 @@
   OVR['d2-aplicacoes'].campos = [{ k: 'inst', t: 'repeat', n: 3, item: 'Instituição', titles: ['MMA', 'Ibama/Prevfogo', 'ICMBio'], f: [{ k: 'uso', t: 'area', l: 'Como usa a informação sobre fogo', rows: 2 }, { k: 'precisa', t: 'area', l: 'O que precisa receber dos estados, com que frequência e formato', rows: 2 }, { k: 'conexao', t: 'line', l: 'Solução apresentada pela manhã que se conecta' }] }, { k: 'convergencia', t: 'area', l: 'Convergências do diálogo final', rows: 3 }];
   OVR['d2-painel'].campos = [{ k: 'comuns', t: 'area', l: 'Demandas comuns a mais de um grupo', rows: 3 }, { k: 'apoio', t: 'area', l: 'Possibilidades de apoio citadas pelas instituições', rows: 3 }, { k: 'semresposta', t: 'area', l: 'O que ainda está sem resposta', rows: 3 }];
   OVR['d3-encerramento'].campos = [{ k: 'compromissos', t: 'area', l: 'Compromissos imediatos do grupo', rows: 3 }, { k: 'continuidade', t: 'area', l: 'Sugestões para a continuidade da agenda', rows: 2 }];
+  // ---------- Grupos com cores repetidas (2 por cor) ----------
+  OVR['d1-credenciamento'].passos = [{ min: 30, txt: 'No credenciamento, cada pessoa recebe a indicação da sua mesa. A equipe distribui as pessoas para que cada grupo misture estados e instituições. O grupo escolhe o líder do primeiro exercício, que preenche a lista de participantes: nome e estado ou instituição de cada pessoa.' }];
+  OVR['d1-credenciamento'].campos = [{ k: 'lider', t: 'line', l: 'Líder do primeiro exercício', h: 'A liderança pode mudar a cada exercício' }, { k: 'participantes', t: 'lista', n: 12, l: 'Participantes do grupo', h: 'Até 12 pessoas. O número de cada pessoa é usado para marcar a presença nos exercícios seguintes.' }];
+  OVR['d1-credenciamento'].papel = 'O grupo se acomoda na sua mesa e registra cada participante: nome e estado ou instituição.';
+  OVR['d1-sintese'].papel = 'O porta-voz apresenta, em até 2 minutos, a demanda mais prioritária e 1 pergunta do grupo, sem repetir o que outro grupo já disse. O líder registra os ajustes e as perguntas novas.';
+  OVR['d2-painel'].papel = 'O porta-voz apresenta, em até 3 minutos, a síntese da clínica do grupo. O líder registra o que a plenária indicar.';
+  OVR['d1-sintese'].passos = [{ min: 16, txt: `Porta-vozes dos grupos, até 2 minutos cada, com o tempo dividido igualmente entre os grupos: a demanda mais prioritária do grupo e 1 pergunta para o Dia 2. O que outro grupo já disse não se repete: basta dizer "concordamos com o grupo tal" e acrescentar o que é novo.` }, { min: 14, txt: 'Formulação das questões para o INPE e demais instituições, conduzida pela organização. O líder registra os ajustes e as perguntas novas e entrega.' }];
+  OVR['d2-painel'].passos = [{ min: 24, txt: `Porta-vozes dos grupos, até 3 minutos cada, com o tempo dividido igualmente entre os grupos: a síntese da clínica do grupo, sem repetir o que outro grupo já apresentou.` }, { min: 16, txt: 'Identificação de demandas comuns, possibilidades de apoio e pontos ainda sem resposta. O líder registra e entrega.' }];
+  OVR['d3-plano'].passos = [{ min: 5, txt: 'Escolher o líder e ler o 5W2H.' }, { min: 60, txt: 'Uma ação por eixo, 12 minutos cada: o quê, por quê, quem, onde, quando, como e quanto.' }, { min: 16, txt: 'Validação em plenária: cada grupo apresenta suas ações em até 2 minutos, com o tempo dividido igualmente entre os grupos.' }, { min: 9, txt: 'Registrar os ajustes da plenária, ler para o grupo e entregar.' }];
   ETAPAS.forEach(e => Object.assign(e, OVR[e.id] || {}));
   ETAPAS.forEach(e => { if (e.catOverride) { e.campos = e.campos.map(f => f.t === 'clinica' ? { ...f, o: e.catOverride } : f); delete e.catOverride; } });
   const _m = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b; };
@@ -407,10 +435,10 @@
     'd3-sintese': 'Matriz consolidada', 'd3-priorizacao': 'Prioridades e horizontes', 'd3-plano': 'Plano de seguimento', 'd3-encerramento': 'Avaliação e continuidade',
   };
   const OBSERVE = {
-    'd1-credenciamento': ['Sentar na mesa da cor do crachá', 'Escolher o líder do primeiro exercício'],
-    'd1-belem': ['Como a SEMAS/PA organiza o fluxo do alerta à resposta', 'Quais dados e produtos do INPE foram usados e com que resultado', 'Que lacunas o diagnóstico-piloto revelou'],
-    'd1-estados1': ['PMIF: existe, está vigente, quem coordena', 'Sala de situação: estrutura, rotina e quem decide', 'Dados e sistemas usados e onde faltam informações'],
-    'd1-estados2': ['O que se repete entre os nove estados', 'O que é próprio de cada território (bioma, logística, estrutura)', 'Práticas que outros estados poderiam adotar'],
+    'd1-credenciamento': ['Sentar na mesa indicada no credenciamento', 'Escolher o líder do primeiro exercício', 'Preencher a lista com nome e estado ou instituição de cada pessoa'],
+    'd1-belem': ['Como a SEMAS/PA organiza o fluxo do alerta à resposta', 'O que o levantamento prévio mostrou sobre iniciativas, ferramentas, integração de sistemas e dados prioritários', 'Que lacunas e dificuldades de acesso a dados o levantamento revelou'],
+    'd1-estados1': ['PMIF: existe, está vigente, quem coordena', 'Sala de situação: estrutura, rotina e quem decide', 'O que a apresentação confirma ou acrescenta ao levantamento prévio do estado'],
+    'd1-estados2': ['O que se repete entre os estados', 'O que é próprio de cada território (bioma, logística, estrutura)', 'Práticas que outros estados poderiam adotar'],
     'd1-grupos': ['Todos falam a partir da realidade do seu estado ou instituição', 'Uma demanda boa diz o que falta, para quem e para quê', 'Use as perguntas de cada tema para orientar a rodada'],
     'd1-sintese': ['Anotar o que outros grupos trouxeram de parecido', 'Registrar perguntas novas para o Dia 2'],
     'd2-bdc': ['Que bases e séries históricas estão disponíveis', 'O que o estado precisa ter para usar a plataforma', 'Qual demanda do Dia 1 pode ser atendida'],
@@ -427,10 +455,10 @@
     'd3-encerramento': ['Compromissos imediatos e quem os assume', 'Avaliação individual de cada participante'],
   };
   const PEDE = {
-    'd1-credenciamento': ['Registrar quem compõe o grupo hoje.', 'Líder, estados e instituições presentes'],
+    'd1-credenciamento': ['Registrar quem compõe o grupo: nome e estado ou instituição de cada pessoa.', 'Lista de participantes (até 12) e líder'],
     'd1-belem': ['Anotar o que o grupo leva da experiência de Belém e o que é diferente na sua realidade.', '2 registros e 1 pergunta'],
     'd1-estados1': ['Para cada um dos 5 estados: um destaque, o principal desafio e a demanda.', '5 quadros de estado'],
-    'd1-estados2': ['Para cada um dos 4 estados: o mesmo quadro. Depois, o que é comum aos nove.', '4 quadros de estado e o que é comum'],
+    'd1-estados2': ['Para cada um dos 4 estados: o mesmo quadro. Depois, o que é comum aos estados. O quinto quadro fica reservado para o Piauí ou outro estado, se houver mais uma apresentação.', 'Quadros de estado e o que é comum'],
     'd1-grupos': ['Em cada um dos cinco temas, registrar o principal desafio e uma demanda do grupo.', '5 demandas (uma por tema) e as perguntas para o Dia 2'],
     'd1-sintese': ['Ouvir os outros grupos e anotar ajustes e perguntas novas.', 'Ajustes e perguntas para o Dia 2'],
     'd2-bdc': ['Registrar o que a solução apresentada serve para os estados do grupo e o que ainda falta.', 'O que serve, o que falta e 1 pergunta'],
@@ -446,7 +474,7 @@
     'd3-plano': ['Montar uma ação por eixo no formato 5W2H: o quê, por quê, quem, onde, quando, como e quanto.', '5 ações em 5W2H, uma por eixo'],
     'd3-encerramento': ['Registrar os compromissos imediatos do grupo. A avaliação é individual.', 'Compromissos do grupo'],
   };
-  const RITUAL = ['Ouvir: cada pessoa fala uma vez, em até 1 minuto', 'Conversar: o grupo combina o que registrar', 'Registrar e enviar: o líder escreve, lê em voz alta e envia'];
+  const RITUAL = ['Ouvir: cada estado ou instituição presente fala uma vez, em até 1 minuto', 'Conversar: o grupo combina o que registrar', 'Registrar e entregar: o líder escreve, lê em voz alta e o grupo confirma'];
   let nEx = 0;
   ETAPAS.forEach(e => {
     e.tema = TEMAS[e.id] || '';
@@ -456,11 +484,11 @@
       e.ex = ++nEx;
       e.exNome = `Exercício ${e.ex} · ${e.sessao}`;
       const fim = e.fim.replace(':', 'h'), ini = e.ini.replace(':', 'h');
-      e.quando = e.tipo === 'grupo' ? `Na mesa do grupo, das ${ini} às ${fim}. Enviar até ${fim}.`
-        : e.tipo === 'apoio' ? `Na chegada, das ${ini} às ${fim}. Enviar até ${fim}.`
-        : `Durante a sessão "${e.sessao}" (${ini}–${fim}). Enviar ao final da sessão, até ${fim}.`;
+      e.quando = e.tipo === 'grupo' ? `Na mesa do grupo, das ${ini} às ${fim}. Entregar até ${fim}.`
+        : e.tipo === 'apoio' ? `Na chegada, das ${ini} às ${fim}. Entregar até ${fim}.`
+        : `Durante a sessão "${e.sessao}" (${ini}–${fim}). Entregar ao final da sessão, até ${fim}.`;
       [e.pede, e.entrega] = PEDE[e.id] || ['', ''];
-      if (e.id !== 'd1-credenciamento') e.campos = [{ k: 'lider', t: 'line', l: 'Líder deste exercício', h: 'A liderança pode mudar a cada exercício' }, { k: 'presentes', t: 'line', l: 'Pessoas no grupo nesta etapa', h: 'Os grupos podem mudar de composição; registre quantas pessoas participaram deste exercício', w: 'short' }, ...e.campos];
+      if (e.id !== 'd1-credenciamento') e.campos = [{ k: 'lider', t: 'line', l: 'Líder deste exercício', h: 'Nome ou nº da lista. A liderança pode mudar a cada exercício' }, { k: 'presentes', t: 'multi', l: 'Presentes (nº da lista do grupo)', o: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'] }, ...e.campos];
     }
   });
 
@@ -469,7 +497,7 @@
   const erros = [];
   ETAPAS.forEach(e => { if (e.tipo === 'pausa') return; const d = toMin(e.fim) - toMin(e.ini); const s = e.passos.reduce((a, p) => a + p.min, 0); if (d !== s) erros.push(`${e.id}: ${s} de ${d} min`); });
 
-  const CFG = { UFS, DEST, GRUPOS, DIAS, ETAPAS, RITUAL: typeof RITUAL !== 'undefined' ? RITUAL : [], OBJETIVO, OBJ_ESP, GLOSSARIO, toMin, erros, evento: 'Encontro Técnico · Monitoramento e Gestão Integrado do Fogo na Amazônia Legal', local: 'São José dos Campos/SP' };
+  const CFG = { UFS, DEST, GRUPOS, CORES, POR_COR, NG, DIAS, ETAPAS, RITUAL: typeof RITUAL !== 'undefined' ? RITUAL : [], OBJETIVO, OBJ_ESP, GLOSSARIO, toMin, erros, evento: 'Encontro Técnico · Monitoramento e Gestão Integrado do Fogo na Amazônia Legal', local: 'São José dos Campos/SP' };
   if (typeof module !== 'undefined') module.exports = CFG; else root.CFG = CFG;
 })(this);
 
@@ -740,7 +768,7 @@ function homeHTML() {
     <div><span class="eyebrow">Este aparelho é o tablet de qual grupo?</span>
       <div class="tiles" style="margin-top:10px">
         ${GRUPOS.map(g => `<button class="tile" data-role="${g.id}" data-hash="${g.id}" style="--g:${g.cor}"><b>${esc(g.nome)}</b><small>Cor ${esc(g.corNome)}<br>Grupo misto: estados e instituições</small></button>`).join('')}
-        <button class="tile team" data-role="equipe"><b>Painel da equipe</b><small>Libera as etapas, acompanha os 4 grupos, matriz comum, avaliações e exportação</small></button>
+        <button class="tile team" data-role="equipe"><b>Painel da equipe</b><small>Libera as etapas, acompanha os ${GRUPOS.length} grupos, matriz comum, avaliações e exportação</small></button>
       </div></div>
     <div><span class="eyebrow">Como cada exercício acontece</span><ol class="ritual" style="margin-top:10px">${CFG.RITUAL.map(r => { const [a, b] = r.split(': '); return `<li><b>${esc(a)}</b>${esc(b)}</li>`; }).join('')}</ol></div>
     <details class="about"><summary>Sobre o encontro: objetivo, objetivos específicos e glossário</summary>
@@ -846,6 +874,11 @@ function fieldHTML(f, data, ed, e, g, path = '') {
       const n = Math.max(f.n, arr.length);
       return `<div class="fld"><span class="lbl">${esc(f.item)}s</span><div class="rep ${f.compact ? 'compact' : 'cardgrid'}" ${f.compact ? '' : 'style="grid-template-columns:minmax(0,1fr)"'}>${Array.from({ length: n }, (_, i) =>
         `<div class="card"><div class="ct"><b><span class="num">${i + 1}</span>${esc(f.titles ? f.item + ': ' + f.titles[i] : f.item)}</b></div>${f.guias && f.guias[i] ? `<div class="guia"><span class="eyebrow">Perguntas para orientar a rodada</span><ul class="obs">${f.guias[i].map(q => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}${f.f.map(sf => fieldHTML(sf, arr[i] || {}, ed, e, g, `${key}.${i}.`)).join('')}</div>`).join('')}</div></div>`;
+    }
+    case 'lista': {
+      const arr = Array.isArray(v) ? v : [];
+      return `<div class="fld"><span class="lbl">${esc(f.l)}</span>${hint}<div class="tbl-wrap"><table><thead><tr><th>Nº</th><th>Nome</th><th>Estado (UF) ou instituição</th><th>Órgão ou função</th></tr></thead><tbody>${Array.from({ length: f.n }, (_, i) =>
+        `<tr><td>${i + 1}</td>${['nome', 'uf', 'orgao'].map(c => `<td><input type="text" aria-label="${c} ${i + 1}" data-k="${key}.${i}.${c}" value="${esc((arr[i] || {})[c] || '')}" ${dis}></td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
     }
     case 'rating': {
       const o = v || {};
