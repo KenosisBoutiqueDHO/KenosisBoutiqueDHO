@@ -324,7 +324,7 @@
     'd1-credenciamento': { passos: [{ min: 30, txt: 'Cada pessoa senta na mesa da cor do seu crachá. O grupo escolhe o líder do primeiro exercício, que registra quem está presente.' }],
       campos: [{ k: 'lider', t: 'line', l: 'Líder do primeiro exercício', h: 'A liderança pode mudar a cada exercício' }, { k: 'estados', t: 'multi', l: 'Estados presentes no grupo', o: UFS }, { k: 'pessoas', t: 'line', l: 'Número de pessoas no grupo' }] },
     'd1-belem': { passos: [{ min: 40, txt: 'Ouvir a apresentação. O líder anota o que o grupo destaca e, no último minuto, lê para o grupo e entrega.' }],
-      campos: [{ k: 'leva', t: 'area', l: 'O que levamos de Belém para os nossos estados', rows: 4 }, { k: 'diferente', t: 'area', l: 'O que é diferente na nossa realidade', rows: 3 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo (indique para quem)', rows: 2 }] },
+      campos: [{ k: 'leva', t: 'area', l: 'O que levamos de Belém para os nossos estados', rows: 3 }, { k: 'diferente', t: 'area', l: 'O que é diferente na nossa realidade', rows: 3 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo (indique para quem)', rows: 2 }] },
     'd1-estados1': { passos: [{ min: 75, txt: 'Ouvir as cinco apresentações. O líder preenche um quadro por estado.' }, { min: 45, txt: 'Diálogo orientado, com o Termômetro de Convergência ao fim de cada estado. O líder revisa e entrega.' }],
       campos: [{ k: 'estados', t: 'repeat', n: 5, item: 'Estado', f: [{ k: 'uf', t: 'select', l: 'Estado', o: UFS }, { k: 'destaque', t: 'area', l: 'Destaque (PMIF, sala de situação, dados, sistemas)', rows: 2 }, { k: 'desafio', t: 'area', l: 'Principal desafio', rows: 2 }, { k: 'demanda', t: 'line', l: 'Demanda apresentada' }] }] },
     'd1-estados2': { passos: [{ min: 60, txt: 'Ouvir as quatro apresentações. O líder preenche um quadro por estado.' }, { min: 45, txt: 'Diálogo comparativo, com o Termômetro ao fim de cada estado. O grupo combina o que é comum aos estados; o líder registra e entrega.' }],
@@ -407,7 +407,7 @@
     { k: 'pratica', t: 'line', l: 'Prática que vale compartilhar' },
     { k: 'demanda', t: 'area', l: 'Demanda apresentada', rows: 2 }];
   OVR['d1-estados1'].campos[0].f = ESTADO_F; OVR['d1-estados2'].campos[0].f = ESTADO_F;
-  OVR['d1-belem'].campos = [{ k: 'leva', t: 'area', l: 'O que levamos de Belém para os nossos estados', rows: 4 }, { k: 'lacunas', t: 'area', l: 'Lacunas e prioridades apontadas no levantamento que também são nossas', rows: 3 }, { k: 'diferente', t: 'area', l: 'O que é diferente na nossa realidade', rows: 2 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo (indique para quem)', rows: 2 }];
+  OVR['d1-belem'].campos = [{ k: 'leva', t: 'area', l: 'O que levamos de Belém para os nossos estados', rows: 3 }, { k: 'lacunas', t: 'area', l: 'Lacunas e prioridades apontadas no levantamento que também são nossas', rows: 3 }, { k: 'diferente', t: 'area', l: 'O que é diferente na nossa realidade', rows: 2 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo (indique para quem)', rows: 2 }];
   ['d2-bdc', 'd2-sala', 'd2-biomas', 'd2-queimadas'].forEach(id => { OVR[id].campos = [{ k: 'serve', t: 'area', l: 'O que serve para os nossos estados', rows: 3 }, { k: 'condicao', t: 'area', l: 'Condição para usarmos (acesso, capacitação, infraestrutura, acordo)', rows: 2 }, { k: 'falta', t: 'area', l: 'O que ainda falta', rows: 2 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo', rows: 1 }]; });
   OVR['d2-sisfogo'].campos = [{ k: 'precisa', t: 'area', l: 'O que os estados precisam fazer para se integrar ao SISFOGO (dados, formato, protocolos)', rows: 4 }, { k: 'responsabilidades', t: 'area', l: 'Responsabilidades: o que é do estado e o que é federal', rows: 3 }, { k: 'falta', t: 'area', l: 'O que falta ou dificulta a integração', rows: 3 }, { k: 'pergunta', t: 'area', l: 'Pergunta do grupo', rows: 2 }];
   OVR['d2-aplicacoes'].campos = [{ k: 'inst', t: 'repeat', n: 3, item: 'Instituição', titles: ['MMA', 'Ibama/Prevfogo', 'ICMBio'], f: [{ k: 'uso', t: 'area', l: 'Como usa a informação sobre fogo', rows: 2 }, { k: 'precisa', t: 'area', l: 'O que precisa receber dos estados, com que frequência e formato', rows: 2 }, { k: 'conexao', t: 'line', l: 'Solução apresentada pela manhã que se conecta' }] }, { k: 'convergencia', t: 'area', l: 'Convergências do diálogo final', rows: 3 }];
@@ -579,16 +579,17 @@ function SupaDB(codigo) {
   const snap = (obj) => ({ docs: Object.entries(obj || {}).map(([id, v]) => ({ id, data: () => v })) });
   let last = null;
   async function poll() {
-    try { last = await rpc('ef_ler', { p_codigo: codigo });
+    try { last = await rpc('ef_ler', { p_codigo: codigo }); if (!alive) return;
       L.respostas.forEach(([cb]) => cb(snap(last.respostas)));
       L.controle.forEach(([cb]) => cb({ data: () => last.controle || null }));
       L.termometro.forEach(([cb]) => cb(snap(last.termometro)));
       L.avaliacoes.forEach(([cb]) => cb({ docs: (last.avaliacoes || []).map((v, i) => ({ id: String(i), data: () => v })) }));
     } catch (e) { [...L.respostas, ...L.controle].forEach(([, err]) => err && err(e)); }
   }
-  setInterval(poll, 4000); setTimeout(poll, 50);
+  let alive = true; const iv = setInterval(() => alive && poll(), 4000); setTimeout(() => alive && poll(), 50);
   const key = (p) => p.split('/')[0];
   return {
+    stop: () => { alive = false; clearInterval(iv); Object.keys(L).forEach(k => L[k] = []); },
     collection: (name) => ({ onSnapshot: (cb, err) => { (L[name] || (L[name] = [])).push([cb, err]); }, add: (rec) => name === 'avaliacoes' ? rpc('ef_avaliar', { p_codigo: codigo, p_doc: rec }) : Promise.resolve() }),
     doc: (path) => ({
       onSnapshot: (cb, err) => { if (key(path) === 'controle') L.controle.push([cb, err]); },
@@ -601,17 +602,28 @@ function SupaDB(codigo) {
   };
 }
 function loginHTML(msg) {
-  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso ao sistema do encontro</span><h2>Digite o código de acesso</h2><p class="muted" style="margin:0">Cada grupo e a equipe de facilitação têm um código próprio, entregue pela organização.</p></div>
-    <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="text" id="cod" autocomplete="off" autocapitalize="characters" placeholder="Ex.: BRASA-XXXXX" style="font-size:22px;letter-spacing:.06em;text-transform:uppercase"></div>
-    ${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<button class="btn" id="entrar">Entrar</button></div></article></div></div>`;
+  const eq = S.loginEquipe;
+  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso ao sistema do encontro</span><h2>${eq ? 'Código da equipe de facilitação' : 'Digite o código do encontro'}</h2><p class="muted" style="margin:0">${eq ? 'Uso exclusivo da equipe de facilitação.' : 'O código é o mesmo para todas as mesas. Depois de entrar, basta escolher a mesa.'}</p></div>
+    <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="text" id="cod" autocomplete="off" autocapitalize="characters" placeholder="${eq ? 'EQUIPE-' : 'FOGO-'}" style="font-size:24px;letter-spacing:.08em;text-transform:uppercase"></div>
+    ${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="entrar">Entrar</button>${eq ? `<button class="btn ghost" id="voltar-mesas">Voltar</button>` : `<button class="btn ghost" id="login-equipe">Sou da equipe de facilitação</button>`}</div></div></article></div></div>`;
 }
-async function entrar() {
-  const c = ($('#cod')?.value || '').trim().toUpperCase(); if (!c) return;
+async function entrar(codeArg) {
+  const c = (codeArg || $('#cod')?.value || '').trim().toUpperCase(); if (!c) return;
   try { const papel = await rpc('ef_entrar', { p_codigo: c });
-    if (!papel) { $('#app').innerHTML = loginHTML('Código não reconhecido. Confira e tente de novo.'); return; }
+    if (!papel) { S.screen = 'login'; $('#app').innerHTML = loginHTML('Código não reconhecido. Confira e tente de novo.'); return; }
+    S.loginEquipe = false;
+    if (papel === 'participante') { LS.set('evento', c); S.screen = 'auto'; S.role = null; if (S.pendingMesa) { const m = S.pendingMesa; S.pendingMesa = null; selectMesa(m); return; } render(); return; }
+    if (S.db && S.db.stop) S.db.stop();
     LS.set('codigo', c); S.role = papel; LS.set('role', papel); S.screen = 'auto'; startSupa(c); render(); }
-  catch { $('#app').innerHTML = loginHTML('Não foi possível conectar. Verifique a internet e tente de novo.'); }
+  catch { S.screen = 'login'; $('#app').innerHTML = loginHTML('Não foi possível conectar. Verifique a internet e tente de novo.'); }
 }
+function selectMesa(id, stage) {
+  const ev = LS.get('evento', null); if (!ev) { S.pendingMesa = id; S.screen = 'login'; render(); return; }
+  if (S.role !== id || !S.db) { if (S.db && S.db.stop) S.db.stop(); const c = ev + '/' + id; LS.set('codigo', c); S.role = id; LS.set('role', id); startSupa(c); }
+  S.screen = 'auto'; if (stage && E[stage] && E[stage].tipo !== 'pausa') { S.view = stage; S.dayView = E[stage].dia; } else { S.view = null; S.dayView = null; }
+  render(); scrollTo(0, 0);
+}
+function leaveMesa() { if (S.db && S.db.stop) S.db.stop(); S.db = null; S.role = null; LS.del('role'); LS.del('codigo'); S.view = null; if (location.hash) history.replaceState(null, '', location.pathname); render(); scrollTo(0, 0); }
 
 // ---------- sincronização ----------
 function setSync() {
@@ -622,7 +634,7 @@ function startSupa(c) {
   S.db = SupaDB(c); S.mode = 'connecting'; setSync(); loadLocal(); attachDb();
 }
 async function connect() {
-  if (SUPA) { const c = LS.get('codigo', null); if (!c) { S.mode = 'local'; setSync(); S.screen = 'login'; render(); return; } S.role = LS.get('role', null); startSupa(c); render(); return; }
+  if (SUPA) { const c = LS.get('codigo', null); if (!c) { S.mode = 'local'; setSync(); if (!LS.get('evento', null)) S.screen = 'login'; route(); return; } S.role = LS.get('role', null); startSupa(c); route(); return; }
   if (DEMO) { S.mode = 'demo'; setSync(); loadLocal(); render(); return; }
   let to = setTimeout(() => { if (S.mode === 'connecting') { S.mode = 'local'; setSync(); loadLocal(); render(); } }, 10000);
   try { S.db = await window.claude?.use?.('db'); } catch { S.db = null; }
@@ -721,16 +733,17 @@ const ENV_TS = {};
 function route() {
   const h = (location.hash || '').slice(1);
   const gm = GRUPOS.find(g => h === g.id || h === 'g-' + g.id || h.startsWith(g.id + '-'));
-  if (gm && SUPA && S.role && S.role !== 'equipe' && S.role !== gm.id) { toast('Este acesso é do ' + G[S.role].nome + '.'); return; }
-  if (gm && SUPA && !S.role) { S.screen = 'login'; render(); return; }
+  if (h.startsWith('acesso=')) { const c = decodeURIComponent(h.slice(7)); history.replaceState(null, '', location.pathname); const [ev, m] = c.split('/'); if (m) { S.pendingMesa = m.toLowerCase(); } entrar(ev); return; }
+  if (gm && SUPA && S.role !== 'equipe') { selectMesa(gm.id, h.slice(gm.id.length + 1)); return; }
   if (gm) { S.role = gm.id; LS.set('role', gm.id); S.screen = 'auto'; const st = h.slice(gm.id.length + 1); if (E[st] && E[st].tipo !== 'pausa') { S.view = st; S.dayView = E[st].dia; } else { S.view = null; S.dayView = null; } render(); scrollTo(0, 0); return; }
   if (h === 'mapa') S.screen = 'mapa';
   else if (h === 'avaliacao') { S.screen = 'avaliacao'; S.avalSent = false; }
   else if (E[h] && E[h].tipo !== 'pausa') { S.screen = 'auto'; if (S.role && S.role !== 'equipe') { S.view = h; S.dayView = E[h].dia; } else if (!S.role) S.pendingStage = h; else { S.respStage = h; S.tab = 'respostas'; } }
-  else S.screen = 'auto';
+  else S.screen = (SUPA && !LS.get('evento', null) && !LS.get('codigo', null)) || S.loginEquipe ? 'login' : 'auto';
   render(); scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target && ev.target.id === 'cod') entrar(); });
 function exercicio(e) { return e.individual ? 'Grupo e individual' : e.campos.length && e.id !== 'd1-abertura' ? 'Exercício do grupo' : 'Sem registro'; }
 
 // ---------- render raiz ----------
@@ -745,7 +758,7 @@ function render() {
   if (!S.role) { who.innerHTML = nav; app.innerHTML = homeHTML(); return; }
   if (S.role === 'equipe') { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">Equipe de facilitação · trocar</button>`; app.innerHTML = panelHTML(); afterPanel(); return; }
   const g = G[S.role]; document.documentElement.style.setProperty('--g', g.cor);
-  who.innerHTML = nav + ` <button class="chip" id="trocar" title="Trocar o grupo deste tablet"><span class="dot"></span>${esc(g.nome)}</button>`;
+  who.innerHTML = nav + ` <button class="chip" id="trocar" title="Trocar de mesa"><span class="dot"></span>${esc(g.papel)} · trocar</button>`;
   app.innerHTML = tabletHTML(g); tick();
 }
 function softRender() {
@@ -765,9 +778,9 @@ function homeHTML() {
     ${S.mode === 'demo' ? `<div class="banner">Versão de demonstração para avaliação. Navegue à vontade, escolha um grupo e preencha os exercícios: as respostas ficam só neste aparelho e não vão para a base do encontro.</div>` : ''}
     ${S.pendingStage ? `<div class="banner">Você abriu o link de <b>${esc(E[S.pendingStage].sessao)}</b> (${esc(DIAS[E[S.pendingStage].dia - 1].rotulo)}, ${hm(E[S.pendingStage].ini)}). Escolha o grupo deste tablet para continuar.</div>` : ''}
     <div style="display:flex;gap:10px;flex-wrap:wrap"><a class="btn" href="#mapa" style="text-decoration:none">Ver o mapa do encontro: sessões, exercícios e links</a><a class="btn ghost" href="#avaliacao" style="text-decoration:none">Avaliação individual</a></div>
-    <div><span class="eyebrow">Este aparelho é o tablet de qual grupo?</span>
+    <div><span class="eyebrow">Escolha a mesa deste aparelho</span>${SUPA ? ` <button class="chip" id="sair-evento" style="margin-left:8px">Sair</button>` : ''}
       <div class="tiles" style="margin-top:10px">
-        ${GRUPOS.map(g => `<button class="tile" data-role="${g.id}" data-hash="${g.id}" style="--g:${g.cor}"><b>${esc(g.nome)}</b><small>Cor ${esc(g.corNome)}<br>Grupo misto: estados e instituições</small></button>`).join('')}
+        ${GRUPOS.map(g => `<button class="tile" data-role="${g.id}" data-hash="${g.id}" style="--g:${g.cor}"><b>${esc(g.papel)}</b><small>${esc(CFG.CORES.find(c => c.id === g.base)?.nome || '')} · ${esc(g.corNome)}</small></button>`).join('')}
         <button class="tile team" data-role="equipe"><b>Painel da equipe</b><small>Libera as etapas, acompanha os ${GRUPOS.length} grupos, matriz comum, avaliações e exportação</small></button>
       </div></div>
     <div><span class="eyebrow">Como cada exercício acontece</span><ol class="ritual" style="margin-top:10px">${CFG.RITUAL.map(r => { const [a, b] = r.split(': '); return `<li><b>${esc(a)}</b>${esc(b)}</li>`; }).join('')}</ol></div>
@@ -959,12 +972,16 @@ function rerenderStage() { const y = scrollY; const g = G[S.role]; const sec = $
 document.addEventListener('click', async ev => {
   const b = ev.target.closest('button'); if (!b) return;
   if (b.dataset.hash) { if (S.pendingStage) { location.hash = b.dataset.hash + '-' + S.pendingStage; S.pendingStage = null; } else location.hash = b.dataset.hash; return; }
+  if (b.id === 'login-equipe') { S.loginEquipe = true; S.screen = 'login'; render(); return; }
+  if (b.id === 'voltar-mesas') { S.loginEquipe = false; S.screen = LS.get('evento', null) ? 'auto' : 'login'; render(); return; }
+  if (b.id === 'sair-evento') { LS.del('evento'); leaveMesa(); S.screen = 'login'; render(); return; }
+  if (SUPA && b.dataset.role === 'equipe') { S.loginEquipe = true; S.screen = 'login'; render(); return; }
   if (b.dataset.role) { S.role = b.dataset.role; LS.set('role', S.role); S.view = null; S.dayView = null; if (S.pendingStage && S.role !== 'equipe') { S.view = S.pendingStage; S.dayView = E[S.pendingStage].dia; } S.pendingStage = null; render(); scrollTo(0, 0); return; }
   if (b.dataset.copylink) { const url = BASE + '#' + b.dataset.copylink; try { await navigator.clipboard.writeText(url); toast('Link copiado'); } catch { toast(url); } return; }
   if (b.id === 'aval-enviar') { await enviarAval(); return; }
   if (b.id === 'aval-proxima') { S.aval = {}; S.avalSent = false; render(); scrollTo(0, 0); return; }
   if (b.dataset.val && b.closest('.form[data-aval]')) { setPath(S.aval, b.dataset.k, Number(b.dataset.val)); const y = scrollY; render(); scrollTo(0, y); return; }
-  if (b.id === 'trocar') { if (b.dataset.armed) { S.role = null; LS.del('role'); if (SUPA) { LS.del('codigo'); location.reload(); return; } render(); return; } b.dataset.armed = '1'; b.textContent = 'Tocar de novo para trocar'; setTimeout(() => render(), 3000); return; }
+  if (b.id === 'trocar') { if (SUPA && S.role !== 'equipe') { leaveMesa(); return; } if (b.dataset.armed) { S.role = null; LS.del('role'); if (SUPA) { LS.del('codigo'); location.reload(); return; } render(); return; } b.dataset.armed = '1'; b.textContent = 'Tocar de novo para trocar'; setTimeout(() => render(), 3000); return; }
   if (b.dataset.day) { S.dayView = Number(b.dataset.day); $('.rail').innerHTML = railHTML(G[S.role]); return; }
   if (b.dataset.go) { S.view = b.dataset.go; S.dayView = E[b.dataset.go].dia; render(); scrollTo(0, 0); return; }
   if (b.dataset.val && b.closest('.form[data-doc]')) { const form = b.closest('.form'); editDoc(form, d => setPath(d, b.dataset.k, Number(b.dataset.val))); rerenderStage(); return; }
@@ -1031,7 +1048,9 @@ async function enviarAval() {
   const has = Object.values(S.aval).some(v => v && (typeof v !== 'object' || Object.keys(v).length));
   if (!has) { toast('Preencha ao menos uma resposta.'); return; }
   const loc = LS.get('avals', []); loc.push(rec); LS.set('avals', loc);
-  if (S.db && S.mode === 'online') { try { await S.db.collection('avaliacoes').add(rec); rec.sync = true; loc[loc.length - 1].sync = true; LS.set('avals', loc); } catch { toast('Guardada neste aparelho; será enviada depois.'); } }
+  const evc = SUPA ? (LS.get('codigo', null) || LS.get('evento', null)) : null;
+  if (SUPA && evc) { try { await rpc('ef_avaliar', { p_codigo: evc, p_doc: rec }); loc[loc.length - 1].sync = true; LS.set('avals', loc); } catch { toast('Guardada neste aparelho; será enviada depois.'); } }
+  else if (S.db && S.mode === 'online') { try { await S.db.collection('avaliacoes').add(rec); rec.sync = true; loc[loc.length - 1].sync = true; LS.set('avals', loc); } catch { toast('Guardada neste aparelho; será enviada depois.'); } }
   S.avalSent = true; S.aval = {}; render(); scrollTo(0, 0);
 }
 function avaliacoesHTML() {
