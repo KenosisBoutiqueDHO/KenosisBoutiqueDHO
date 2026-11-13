@@ -612,22 +612,23 @@ function loginHTML(msg) {
   const eq = S.loginEquipe;
   if (!eq) return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso das mesas</span><h2>Aponte a câmera do celular para o QR Code da sua mesa</h2><p class="muted" style="margin:0">O sistema abre direto no seu grupo. Para trocar de grupo em outro exercício, basta ler o QR Code da nova mesa.</p></div>
     <div class="stage-body">${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<button class="btn ghost" id="login-equipe">Acesso da equipe Kenosis ou da UNODC</button></div></article></div></div>`;
-  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Bastidores</span><h2>Código de acesso</h2><p class="muted" style="margin:0">Equipe Kenosis: painel completo. UNODC: tabela de credenciamento.</p></div>
-    <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="password" id="cod" autocomplete="off" autocapitalize="characters" placeholder="Código" style="font-size:22px;letter-spacing:.08em;text-transform:uppercase"></div>
+  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Bastidores</span><h2>Senha de acesso</h2><p class="muted" style="margin:0">Equipe Kenosis: painel completo. UNODC: tabela de credenciamento.</p></div>
+    <div class="stage-body"><div class="fld"><label for="cod">Senha</label><input type="password" id="cod" autocomplete="off" autocapitalize="none" placeholder="Senha" style="font-size:22px;letter-spacing:.08em;text-transform:uppercase"></div>
     ${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="entrar">Entrar</button><button class="btn ghost" id="voltar-mesas">Voltar</button></div></div></article></div></div>`;
 }
 const TROCA_INI = '2026-11-16T10:20:00-03:00';
-function podeTrocar() { if (!S.role || PANEL(S.role) || DEMO) return true; const ex1 = WORK.find(x => x.ex === 1); return Date.now() >= Date.parse(TROCA_INI) || (ex1 && getDoc(ex1.id, S.role).status === 'enviada'); }
+function podeTrocar() { if (!S.role || PANEL(S.role) || DEMO) return true; if (LS.get('trocaOk', false)) return true; const ex1 = WORK.find(x => x.ex === 1); const ok = Date.now() >= Date.parse(TROCA_INI) || (ex1 && getDoc(ex1.id, S.role).status === 'enviada'); if (ok) LS.set('trocaOk', true); return ok; }
 async function purgeMesa(old, oldCode) {
   // antes de trocar de grupo: envia o que estiver pendente e apaga do aparelho o conteúdo do grupo anterior
   for (const id of Object.keys(S.resp)) { const d = S.resp[id]; if (!d || d.grupo !== old) continue;
     if (S.dirty[id] && oldCode && d.status !== 'enviada') { try { await rpc('ef_salvar', { p_codigo: oldCode, p_id: id, p_doc: d }); } catch {} }
     delete S.resp[id]; delete S.dirty[id]; LS.del('r:' + id); }
 }
-async function entrar(codeArg) {
+async function entrar(codeArg, viaLink) {
   const c = (codeArg || $('#cod')?.value || '').trim().toUpperCase(); if (!c) return;
   try { const papel = await rpc('ef_entrar', { p_codigo: c });
     if (!papel) { S.screen = 'login'; $('#app').innerHTML = loginHTML('Código não reconhecido. Confira e tente de novo.'); return; }
+    if (viaLink && PANEL(papel)) { S.loginEquipe = true; S.screen = 'login'; $('#app').innerHTML = loginHTML('O acesso dos bastidores é feito digitando a senha.'); return; }
     S.loginEquipe = false;
     if (papel === 'participante') { S.screen = 'login'; $('#app').innerHTML = loginHTML('Código não reconhecido.'); return; }
     if (S.role && /^mesa/.test(S.role) && /^mesa/.test(papel) && papel !== S.role && !podeTrocar()) { toast('Este aparelho está no grupo da ' + G[S.role].papel + '. A troca de grupo fica liberada a partir do Exercício 2.'); S.screen = 'auto'; render(); return; }
@@ -756,7 +757,7 @@ const ENV_TS = {};
 function route() {
   const h = (location.hash || '').slice(1);
   const gm = GRUPOS.find(g => h === g.id || h === 'g-' + g.id || h.startsWith(g.id + '-'));
-  if (h.startsWith('acesso=')) { const c = decodeURIComponent(h.slice(7)); history.replaceState(null, '', location.pathname); const [ev, m] = c.split('/'); if (m) { S.pendingMesa = m.toLowerCase(); } entrar(ev); return; }
+  if (h.startsWith('acesso=')) { const c = decodeURIComponent(h.slice(7)); history.replaceState(null, '', location.pathname); entrar(c, true); return; }
   if (gm && SUPA && !PANEL(S.role)) { if (!S.role) { S.screen = 'login'; render(); return; } if (gm.id !== S.role) { toast('Este aparelho está conectado à ' + G[S.role].papel + '.'); history.replaceState(null, '', location.pathname + '#' + S.role); return; } }
   if (gm) { S.role = gm.id; LS.set('role', gm.id); S.screen = 'auto'; const st = h.slice(gm.id.length + 1); if (E[st] && E[st].tipo !== 'pausa') { S.view = st; S.dayView = E[st].dia; } else { S.view = null; S.dayView = null; } render(); scrollTo(0, 0); return; }
   if (h === 'mapa') S.screen = 'mapa';
@@ -779,9 +780,10 @@ function render() {
   if (S.screen === 'mapa') { who.innerHTML = (S.role ? `<a class="navbtn" href="#">Voltar</a>` : `<a class="navbtn" href="#">Início</a>`); app.innerHTML = mapaHTML(); return; }
   if (S.screen === 'avaliacao') { who.innerHTML = `<a class="navbtn" href="#">Sair da avaliação</a>`; app.innerHTML = avaliacaoHTML(); return; }
   if (!S.role) { who.innerHTML = nav; app.innerHTML = homeHTML(); return; }
+  if (S.screen === 'troca' && /^mesa/.test(S.role)) { who.innerHTML = nav; app.innerHTML = trocaHTML(); return; }
   if (PANEL(S.role)) { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">${S.role === 'unodc' ? 'UNODC' : 'Equipe Kenosis'} · sair</button>`; app.innerHTML = (S.role === 'equipe' && S.eqEdit) ? eqEditHTML() : panelHTML(); afterPanel(); return; }
   const g = G[S.role]; document.documentElement.style.setProperty('--g', g.cor);
-  who.innerHTML = nav + (podeTrocar() ? ` <button class="chip" id="trocar" title="Sair desta mesa"><span class="dot"></span>${esc(g.papel)} · sair</button>` : ` <span class="chip" title="A troca de grupo fica liberada a partir do Exercício 2"><span class="dot"></span>${esc(g.papel)}</span>`);
+  who.innerHTML = nav + (podeTrocar() ? ` <span style="display:inline-flex;flex-direction:column;gap:6px;vertical-align:middle"><button class="chip" id="outro-grupo" title="Entrar em outro grupo">⇄ Outro grupo</button><button class="chip" id="trocar" title="Sair desta mesa"><span class="dot"></span>${esc(g.papel)} · sair</button></span>` : ` <span class="chip" title="A troca de grupo fica liberada depois do Exercício 1"><span class="dot"></span>${esc(g.papel)}</span>`);
   app.innerHTML = tabletHTML(g); tick();
 }
 function softRender() {
@@ -1070,6 +1072,9 @@ document.addEventListener('change', async ev => { const t = ev.target;
   if (t.dataset.pmesa) { const p = (S.parts || []).find(x => String(x.id) === t.dataset.pmesa); if (p) { await savePart({ ...p, mesa: t.value }); credRender(); } } });
 document.addEventListener('click', async ev => {
   const b = ev.target.closest('button'); if (!b) return;
+  if (b.id === 'outro-grupo') { S.screen = 'troca'; render(); scrollTo(0, 0); return; }
+  if (b.dataset.trocacancel) { S.screen = 'auto'; render(); return; }
+  if (b.dataset.trocapara) { try { const c = await rpc('ef_trocar_mesa', { p_codigo: LS.get('codigo', null), p_mesa: b.dataset.trocapara }); if (!c) throw new Error('x'); S.screen = 'auto'; await entrar(c); toast('Agora este aparelho está na ' + G[b.dataset.trocapara].papel); } catch (e) { toast(/troca bloqueada/.test(String(e)) ? 'A troca de grupo fica liberada depois do Exercício 1.' : 'Não foi possível trocar agora. Verifique a conexão.'); } return; }
   if (b.dataset.eqedit) { const id = docId(b.dataset.eqstage, b.dataset.eqedit); const d = S.resp[id] || { etapa: b.dataset.eqstage, grupo: b.dataset.eqedit, status: 'vazio', dados: {} }; S.eqEdit = JSON.parse(JSON.stringify(d)); S.eqEdit.dados = S.eqEdit.dados || {}; S.eqDirty = false; render(); scrollTo(0, 0); return; }
   if (b.dataset.eqback) { if (S.eqDirty && !b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Há alterações não salvas. Toque de novo para sair'; return; } S.eqEdit = null; S.eqDirty = false; render(); return; }
   if (b.dataset.eqsave) { const d = S.eqEdit; const st = $('#eqst')?.value || 'andamento'; const id = docId(d.etapa, d.grupo); const now = Date.now();
@@ -1227,6 +1232,11 @@ function valueText(f, v) {
   if (f.t === 'clinica') return v.filter(x => x?.demanda).map((it, i) => `${i + 1}. ${it.demanda} → ${it.categoria || 'sem categoria'}${it.competente ? ' · ' + it.competente : ''}${it.lacuna ? ' · lacuna: ' + it.lacuna : ''}${it.requisito ? ' · requisito: ' + it.requisito : ''}`).join('\n');
   if (f.t === 'priorizacao') return v.filter(x => x?.demanda).map((it, i) => `${i + 1}. ${it.demanda} · total ${f.crit.reduce((a, _, c) => a + (Number(it['c' + c]) || 0), 0)} · ${it.horizonte || 'sem horizonte'}`).join('\n');
   return String(v);
+}
+function trocaHTML() {
+  return `<div class="wrap" style="padding-top:18px"><article class="stage"><div class="stage-head"><span class="eyebrow">Trocar de grupo</span><h2>Escolha a mesa do novo grupo</h2><p class="muted" style="margin:0">O registro do grupo atual fica salvo. Também é possível ler o QR Code da nova mesa.</p></div>
+    <div class="stage-body"><div class="tiles">${GRUPOS.filter(g => g.id !== S.role).map(g => `<button class="tile" data-trocapara="${g.id}" style="--g:${g.cor}"><b>${esc(g.papel)}</b><small>${esc(CFG.CORES.find(c => c.id === g.base)?.nome || '')} · ${esc(g.corNome)}</small></button>`).join('')}</div>
+    <p style="margin-top:14px"><button class="btn ghost" data-trocacancel="1">Continuar na ${esc(G[S.role].papel)}</button></p></div></article></div>`;
 }
 function eqEditHTML() {
   const d = S.eqEdit; const e = E[d.etapa]; const g = G[d.grupo];
