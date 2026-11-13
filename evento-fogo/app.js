@@ -636,6 +636,7 @@ async function entrar(codeArg, viaLink) {
     const old = S.role, oldCode = LS.get('codigo', null);
     if (S.db && S.db.stop) S.db.stop();
     if (old && old !== papel && /^mesa/.test(old)) await purgeMesa(old, oldCode);
+    if (PANEL(papel)) LS.del('trocaOk');
     LS.set('codigo', c); S.role = papel; LS.set('role', papel); S.screen = 'auto'; startSupa(c); render(); }
   catch { S.screen = 'login'; $('#app').innerHTML = loginHTML('Não foi possível conectar. Verifique a internet e tente de novo.'); }
 }
@@ -760,6 +761,7 @@ function route() {
   if (h.startsWith('acesso=')) { const c = decodeURIComponent(h.slice(7)); history.replaceState(null, '', location.pathname); entrar(c, true); return; }
   if (gm && SUPA && !PANEL(S.role)) { if (!S.role) { S.screen = 'login'; render(); return; } if (gm.id !== S.role) { toast('Este aparelho está conectado à ' + G[S.role].papel + '.'); history.replaceState(null, '', location.pathname + '#' + S.role); return; } }
   if (gm) { S.role = gm.id; LS.set('role', gm.id); S.screen = 'auto'; const st = h.slice(gm.id.length + 1); if (E[st] && E[st].tipo !== 'pausa') { S.view = st; S.dayView = E[st].dia; } else { S.view = null; S.dayView = null; } render(); scrollTo(0, 0); return; }
+  if (h === 'bastidores') { history.replaceState(null, '', location.pathname); S.loginEquipe = true; S.screen = 'login'; render(); scrollTo(0, 0); return; }
   if (h === 'mapa') S.screen = 'mapa';
   else if (h === 'avaliacao') { S.screen = 'avaliacao'; S.avalSent = false; }
   else if (E[h] && E[h].tipo !== 'pausa') { S.screen = 'auto'; if (S.role && !PANEL(S.role)) { S.view = h; S.dayView = E[h].dia; } else if (!S.role) S.pendingStage = h; else { S.respStage = h; S.tab = 'respostas'; } }
@@ -772,7 +774,8 @@ function exercicio(e) { return e.individual ? 'Grupo e individual' : e.campos.le
 
 // ---------- render raiz ----------
 let lastRenderKey = '';
-function render() {
+function render() { renderCore(); const app = $('#app'); if (app && !PANEL(S.role) && !S.loginEquipe && !app.querySelector('.bastidores-link')) app.insertAdjacentHTML('beforeend', `<p class="bastidores-link" style="text-align:center;margin:28px 0 24px;font-size:13px"><a href="#bastidores" style="color:var(--muted,#5b6660)">Acesso da equipe Kenosis ou da UNODC</a></p>`); }
+function renderCore() {
   const app = $('#app');
   const who = $('#who');
   const nav = `<a class="navbtn" href="#mapa">Mapa do encontro</a>`;
@@ -1091,7 +1094,7 @@ document.addEventListener('click', async ev => {
   if (b.dataset.psave) { const box = b.closest('[data-pform]'); const doc = readPform(box); if (b.dataset.psave !== 'novo') doc.id = Number(b.dataset.psave); if (!doc.nome) { toast('Informe o nome do participante.'); return; } if (await savePart(doc)) { S.credEdit = null; credRender(); } return; }
   if (b.dataset.hash) { if (S.pendingStage) { location.hash = b.dataset.hash + '-' + S.pendingStage; S.pendingStage = null; } else location.hash = b.dataset.hash; return; }
   if (b.id === 'login-equipe') { S.loginEquipe = true; S.screen = 'login'; render(); return; }
-  if (b.id === 'voltar-mesas') { S.loginEquipe = false; S.screen = 'login'; render(); return; }
+  if (b.id === 'voltar-mesas') { S.loginEquipe = false; S.screen = S.role ? 'auto' : 'login'; render(); return; }
   if (b.id === 'sair-evento') { LS.del('evento'); leaveMesa(); S.screen = 'login'; render(); return; }
   if (SUPA && b.dataset.role === 'equipe') { S.loginEquipe = true; S.screen = 'login'; render(); return; }
   if (b.dataset.role) { S.role = b.dataset.role; LS.set('role', S.role); S.view = null; S.dayView = null; if (S.pendingStage && !PANEL(S.role)) { S.view = S.pendingStage; S.dayView = E[S.pendingStage].dia; } S.pendingStage = null; render(); scrollTo(0, 0); return; }
