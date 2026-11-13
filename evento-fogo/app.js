@@ -657,6 +657,7 @@ function startSupa(c) {
   S.db = SupaDB(c); S.mode = 'connecting'; setSync(); loadLocal(); attachDb();
 }
 async function connect() {
+  if (SUPA && Date.now() >= Date.parse('2026-11-19T00:00:00-03:00')) { try { Object.keys(localStorage).filter(k => k.startsWith('kfa:') && k !== 'kfa:limpo').forEach(k => localStorage.removeItem(k)); } catch {} }
   if (SUPA) { LS.del('evento'); const c = LS.get('codigo', null); if (!c) { S.mode = 'local'; setSync(); if (!LS.get('evento', null)) S.screen = 'login'; route(); return; } S.role = LS.get('role', null); startSupa(c); route(); return; }
   if (DEMO) { S.mode = 'demo'; setSync(); loadLocal(); render(); return; }
   let to = setTimeout(() => { if (S.mode === 'connecting') { S.mode = 'local'; setSync(); loadLocal(); render(); } }, 10000);
