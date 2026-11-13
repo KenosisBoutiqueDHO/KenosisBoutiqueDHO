@@ -574,7 +574,37 @@ let toastT; function toast(msg) { const t = $('#toast'); t.textContent = msg; t.
 // ---------- Base externa (Supabase) para a versão publicada em site próprio ----------
 const SUPA = {"url":"https://bkajbntazonnunhewxdt.supabase.co","key":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJrYWpibnRhem9ubnVuaGV3eGR0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2MTkzMzksImV4cCI6MjEwNjE5NTMzOX0.O0I9pT_VLJSFG2N3HAdaUGaxhbZPT6mXYJnEaLoGmOo"};
 const PANEL = (r) => r === 'equipe' || r === 'unodc';
-function rpc(fn, args) {
+// ---------- Verificação de local (cerca geográfica do INPE) ----------
+// A posição fica só na memória do aparelho; o servidor confere a distância e não guarda a posição de quem está no local.
+const GEOFN = ['ef_entrar', 'ef_ler', 'ef_salvar', 'ef_trocar_mesa', 'ef_avaliar'];
+const GEO = { pos: null, err: null, watch: null, pedido: false };
+function geoSet(p) { GEO.pos = { lat: Math.round(p.coords.latitude * 1e5) / 1e5, lng: Math.round(p.coords.longitude * 1e5) / 1e5, prec: Math.round(p.coords.accuracy || 0) }; GEO.err = null; }
+function geoPayload() { if (GEO.pos) return { lat: GEO.pos.lat, lng: GEO.pos.lng, prec: GEO.pos.prec }; if (GEO.err) return { erro: GEO.err }; return null; }
+function geoObter() {
+  return new Promise(res => {
+    if (!navigator.geolocation) { GEO.err = 'indisponivel'; return res(); }
+    navigator.geolocation.getCurrentPosition(p => { geoSet(p); geoWatch(); res(); }, e => { GEO.err = e && e.code === 1 ? 'negado' : 'indisponivel'; res(); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  });
+}
+function geoWatch() { if (GEO.watch != null || !navigator.geolocation) return; try { GEO.watch = navigator.geolocation.watchPosition(geoSet, () => {}, { enableHighAccuracy: true, maximumAge: 60000 }); } catch {} }
+function bloquear(motivo) {
+  if (S.bloqueio === motivo && S.screen === 'login') return;
+  S.bloqueio = motivo; if (S.db && S.db.stop) S.db.stop(); S.db = null; S.screen = 'login'; S.loginEquipe = false; render(); scrollTo(0, 0);
+}
+async function rpc(fn, args) {
+  const g = GEOFN.includes(fn);
+  const call = () => rpcRaw(fn, g && GEO.pedido ? { ...args, p_geo: geoPayload() } : args);
+  try { return await call(); }
+  catch (e) {
+    const m = String(e);
+    if (g && /localizacao necessaria/.test(m) && !GEO.pos) { GEO.pedido = true; await geoObter();
+      try { return await call(); } catch (e2) { const m2 = String(e2); if (/fora da area/.test(m2)) bloquear('fora'); else if (/localizacao necessaria/.test(m2)) bloquear(GEO.err === 'negado' ? 'negado' : 'sem'); throw e2; } }
+    if (g && /fora da area/.test(m)) bloquear('fora');
+    else if (g && /localizacao necessaria/.test(m)) bloquear(GEO.err === 'negado' ? 'negado' : 'sem');
+    throw e;
+  }
+}
+function rpcRaw(fn, args) {
   return fetch(SUPA.url + '/rest/v1/rpc/' + fn, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPA.key, Authorization: 'Bearer ' + SUPA.key }, body: JSON.stringify(args) })
     .then(async r => { const t = await r.text(); if (!r.ok) throw new Error(t); return t ? JSON.parse(t) : null; });
 }
@@ -589,7 +619,8 @@ function SupaDB(codigo) {
       L.termometro.forEach(([cb]) => cb(snap(last.termometro)));
       L.avaliacoes.forEach(([cb]) => cb({ docs: (last.avaliacoes || []).map((v, i) => ({ id: String(i), data: () => v })) }));
       (L.participantes || []).forEach(([cb]) => cb(last.participantes || null, last.mesa_participantes || null));
-    } catch (e) { if (/acesso negado/.test(String(e)) && alive) { alive = false; clearInterval(iv); LS.del('codigo'); LS.del('role'); S.role = null; S.db = null; S.screen = 'login'; $('#app').innerHTML = loginHTML('Este acesso não é mais válido. Leia o QR Code da mesa.'); return; } [...L.respostas, ...L.controle].forEach(([, err]) => err && err(e)); }
+      if (last.alertas) { const sig = last.alertas.length + '|' + JSON.stringify(last.controle?.cerca || null); const ch = sig !== S.segSig; S.segSig = sig; S.alertas = last.alertas; S.cerca = last.controle?.cerca || null; if (ch && PANEL(S.role) && S.screen === 'auto' && !document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; render(); scrollTo(0, y); } }
+    } catch (e) { if (/fora da area|localizacao necessaria/.test(String(e))) { alive = false; clearInterval(iv); return; } if (/acesso negado/.test(String(e)) && alive) { alive = false; clearInterval(iv); LS.del('codigo'); LS.del('role'); S.role = null; S.db = null; S.screen = 'login'; $('#app').innerHTML = loginHTML('Este acesso não é mais válido. Leia o QR Code da mesa.'); return; } [...L.respostas, ...L.controle].forEach(([, err]) => err && err(e)); }
   }
   let alive = true; const iv = setInterval(() => alive && poll(), 4000); setTimeout(() => alive && poll(), 50);
   const key = (p) => p.split('/')[0];
@@ -608,7 +639,16 @@ function SupaDB(codigo) {
     }),
   };
 }
+function bloqueioHTML() {
+  const b = S.bloqueio;
+  const t = b === 'fora' ? ['Acesso restrito ao local do encontro', 'Este acesso funciona somente no INPE', 'O QR Code das mesas é válido apenas nas dependências do INPE, em São José dos Campos, durante o encontro. A tentativa de acesso de fora do local foi registrada e comunicada à equipe organizadora.', 'Se você está no INPE, ative o GPS do aparelho, aguarde alguns segundos e toque em Tentar novamente.']
+    : b === 'negado' ? ['Confirmação de local', 'Permita o uso da localização para continuar', 'Durante o encontro, o sistema confirma que o aparelho está no INPE antes de abrir o grupo. A localização serve apenas para essa conferência e não fica guardada.', 'No iPhone: Ajustes › Privacidade e Segurança › Serviços de Localização › navegador utilizado › Durante o Uso. No Android: toque no cadeado ao lado do endereço › Permissões › Localização › Permitir. Depois, toque em Tentar novamente.']
+    : ['Confirmação de local', 'Não foi possível confirmar a localização', 'Durante o encontro, o sistema confirma que o aparelho está no INPE antes de abrir o grupo.', 'Ative a localização (GPS) do aparelho e toque em Tentar novamente. Se o problema continuar, procure a equipe de facilitação.'];
+  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">${t[0]}</span><h2>${t[1]}</h2><p class="muted" style="margin:0">${t[2]}</p></div>
+    <div class="stage-body"><p class="banner">${t[3]}</p><button class="btn" id="geo-tentar">Tentar novamente</button></div></article></div></div>`;
+}
 function loginHTML(msg) {
+  if (S.bloqueio && !S.loginEquipe) return bloqueioHTML();
   const eq = S.loginEquipe;
   if (!eq) return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso das mesas</span><h2>Aponte a câmera do celular para o QR Code da sua mesa</h2><p class="muted" style="margin:0">O sistema abre direto no seu grupo. Para trocar de grupo em outro exercício, basta ler o QR Code da nova mesa.</p></div>
     <div class="stage-body">${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<button class="btn ghost" id="login-equipe">Acesso da equipe Kenosis ou da UNODC</button></div></article></div></div>`;
@@ -626,7 +666,10 @@ async function purgeMesa(old, oldCode) {
 }
 async function entrar(codeArg, viaLink) {
   const c = (codeArg || $('#cod')?.value || '').trim().toUpperCase(); if (!c) return;
-  try { const papel = await rpc('ef_entrar', { p_codigo: c });
+  try { let papel = await rpc('ef_entrar', { p_codigo: c });
+    if (papel === 'bloqueio:pedir_localizacao') { GEO.pedido = true; await geoObter(); papel = await rpc('ef_entrar', { p_codigo: c }); }
+    if (typeof papel === 'string' && papel.startsWith('bloqueio:')) { S.codePend = c; bloquear(papel === 'bloqueio:fora_da_area' ? 'fora' : GEO.err === 'negado' ? 'negado' : 'sem'); return; }
+    S.bloqueio = null; S.codePend = null;
     if (!papel) { S.screen = 'login'; $('#app').innerHTML = loginHTML('Código não reconhecido. Confira e tente de novo.'); return; }
     if (viaLink && PANEL(papel)) { S.loginEquipe = true; S.screen = 'login'; $('#app').innerHTML = loginHTML('O acesso dos bastidores é feito digitando a senha.'); return; }
     S.loginEquipe = false;
@@ -1114,6 +1157,8 @@ document.addEventListener('click', async ev => {
   if (b.dataset.revisar) { const e = E[b.dataset.revisar]; $('#sendzone').innerHTML = `<button class="btn" data-enviar="${e.id}">Enviar ${esc(e.exNome.split(' · ')[0].toLowerCase())}</button>`; return; }
   if (b.dataset.confirmar) { b.disabled = true; await enviarExercicio(b.dataset.confirmar); return; }
   // painel
+  if (b.id === 'geo-tentar') { b.disabled = true; b.textContent = 'Conferindo a localização…'; GEO.pos = null; GEO.err = null; GEO.pedido = true; await geoObter(); const c = S.codePend || LS.get('codigo', null); S.bloqueio = null; if (c) { await entrar(c); } else { S.screen = 'login'; render(); } return; }
+  if (b.dataset.cerca) { try { await rpc('ef_cerca', { p_codigo: LS.get('codigo', null), p_modo: b.dataset.cerca }); S.cerca = { ...(S.cerca || {}), modo: b.dataset.cerca }; toast(b.dataset.cerca === 'desligada' ? 'Verificação de local desligada' : b.dataset.cerca === 'ligada' ? 'Verificação de local ligada agora' : 'Verificação de local automática nos dias do encontro'); } catch { toast('Não foi possível alterar agora. Verifique a conexão.'); } render(); return; }
   if (b.dataset.tab) { S.tab = b.dataset.tab; LS.set('tab', S.tab); render(); return; }
   if (b.dataset.liberar) { await liberar(b.dataset.liberar); return; }
   if (b.dataset.auto) { await liberar(null); return; }
@@ -1195,16 +1240,29 @@ async function liberar(id) {
 }
 function panelHTML() {
   const tabs = S.role === 'unodc' ? [['credenciamento', 'Credenciamento']]
-    : [['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['exportar', 'Exportar e importar']];
+    : [['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['seguranca', 'Segurança' + ((S.alertas || []).length ? ` (${S.alertas.length})` : '')], ['exportar', 'Exportar e importar']];
   if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
   return `<div class="wrap"><div class="panel">
     ${S.mode === 'demo' ? `<div class="banner">Demonstração: libere etapas e veja as respostas deste aparelho. Nada é gravado na base do encontro.</div>` : ''}
     ${S.mode === 'local' ? `<div class="banner">Modo local: este aparelho não está sincronizando. Os tablets seguem o próprio relógio e guardam as respostas. Ao final, importe o arquivo de cada tablet na aba Exportar e importar.</div>` : ''}
+    ${S.role === 'equipe' && (S.alertas || []).some(a => a.tipo === 'fora_da_area') && S.tab !== 'seguranca' ? `<div class="banner" style="border-color:#B3261E;background:#fbeceb"><b>Atenção:</b> houve tentativa de acesso de fora do INPE com o QR Code de: ${[...new Set(S.alertas.filter(a => a.tipo === 'fora_da_area').map(a => G[a.mesa]?.papel || a.mesa))].map(esc).join(', ')}. <button class="btn small" data-tab="seguranca">Ver detalhes</button></div>` : ''}
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}">${l}</button>`).join('')}</div>
-    <div id="tabbody">${({ mapa: () => mapaHTML().replace('class="wrap"', 'class=""'), conducao: conducaoHTML, credenciamento: credHTML, respostas: respostasHTML, matriz: matrizHTML, perguntas: perguntasHTML, termometro: termoHTML, avaliacoes: avaliacoesHTML, exportar: exportHTML })[S.tab]()}</div>
+    <div id="tabbody">${({ mapa: () => mapaHTML().replace('class="wrap"', 'class=""'), conducao: conducaoHTML, credenciamento: credHTML, respostas: respostasHTML, matriz: matrizHTML, perguntas: perguntasHTML, termometro: termoHTML, avaliacoes: avaliacoesHTML, seguranca: segHTML, exportar: exportHTML })[S.tab]()}</div>
   </div></div>`;
 }
 function afterPanel() { tick(); }
+function segHTML() {
+  const c = S.cerca || { modo: 'auto' }; const modo = c.modo || 'auto'; const now = Date.now();
+  const ativa = modo === 'ligada' || (modo === 'auto' && now >= Date.parse('2026-11-16T00:00:00-03:00') && now < Date.parse('2026-11-19T00:00:00-03:00'));
+  const fmt = (q) => new Date(q).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const A = S.alertas || [];
+  const btn = (m, l) => `<button class="btn small ${modo === m ? '' : 'ghost'}" data-cerca="${m}">${l}</button>`;
+  return `<div class="banner" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><b>Verificação de local (INPE · raio de ${esc(String(c.raio_km || 3))} km):</b> ${ativa ? 'ativa agora' : 'inativa agora'}
+    ${btn('auto', 'Automática de 16 a 18/11')}${btn('ligada', 'Ligar agora')}${btn('desligada', 'Desligar')}
+    <span class="muted" style="font-size:13px">Vale só para os QR Codes das mesas. Kenosis e UNODC entram de qualquer lugar pela senha. Use "Desligar" apenas se o GPS falhar no local.</span></div>
+    <h3 style="margin:18px 0 8px">Ocorrências registradas</h3>
+    ${A.length ? `<div class="tbl-wrap"><table><thead><tr><th>Quando</th><th>QR Code da mesa</th><th>Ocorrência</th><th>Distância do INPE</th><th>Local aproximado</th><th>Precisão</th><th>Conexão</th></tr></thead><tbody>${A.map(a => `<tr><td>${fmt(a.quando)}</td><td><b>${esc(G[a.mesa]?.papel || a.mesa)}</b></td><td>${a.tipo === 'fora_da_area' ? 'Acesso de fora do local' : 'Localização recusada ou indisponível'}</td><td>${a.distancia_km != null ? esc(String(a.distancia_km).replace('.', ',')) + ' km' : '—'}</td><td>${a.lat_aprox != null ? esc(a.lat_aprox + ', ' + a.lng_aprox) : '—'}</td><td>${a.precisao_m != null ? esc(String(a.precisao_m)) + ' m' : '—'}</td><td style="font-size:12px">${esc(a.ip || '—')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma ocorrência até agora.</p>'}`;
+}
 function dotsFor(e) { return `<span class="dots">${GRUPOS.map(g => { const s = statusOf(e.id, g.id); return `<i class="${s === 'enviada' ? 'ok' : s === 'andamento' ? 'and' : ''}" style="--gc:${g.cor}" title="${esc(g.nome)}: ${s === 'enviada' ? 'enviado' : s === 'andamento' ? 'em rascunho' : 'sem registro'}"></i>`; }).join('')}</span>`; }
 function diasHTML() {
   if (S.role !== 'equipe') return '';
