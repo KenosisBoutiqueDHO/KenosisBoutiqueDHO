@@ -594,6 +594,7 @@ function SupaDB(codigo) {
   let alive = true; const iv = setInterval(() => alive && poll(), 4000); setTimeout(() => alive && poll(), 50);
   const key = (p) => p.split('/')[0];
   return {
+    liberarDias: (dias) => rpc('ef_liberar_dias', { p_codigo: codigo, p_dias: dias }),
     salvarParticipante: (doc) => rpc('ef_participante_salvar', { p_codigo: codigo, p_doc: doc }),
     stop: () => { alive = false; clearInterval(iv); Object.keys(L).forEach(k => L[k] = []); },
     collection: (name) => ({ onSnapshot: (cb, err) => { (L[name] || (L[name] = [])).push([cb, err]); }, add: (rec) => name === 'avaliacoes' ? rpc('ef_avaliar', { p_codigo: codigo, p_doc: rec }) : Promise.resolve() }),
@@ -665,8 +666,8 @@ function attachDb() {
     Object.keys(S.resp).forEach(id => { if (!snap.docs.find(d => d.id === id) && S.resp[id]?.grupo === S.role) queueSave(id); });
     softRender();
   }, () => { S.mode = 'local'; setSync(); });
-  S.db.doc('controle/estado').onSnapshot(s => { const v = s.data(); const prev = S.ativa; S.ativa = v?.ativa || null; S.ativaAuto = !v?.ativa;
-    if (S.role && !PANEL(S.role) && prev !== S.ativa) { S.view = null; render(); } else softRender(); }, () => {});
+  S.db.doc('controle/estado').onSnapshot(s => { const v = s.data(); const prev = S.ativa; S.ativa = v?.ativa || null; S.ativaAuto = !v?.ativa; const dl = JSON.stringify(v?.dias || []); const dch = dl !== JSON.stringify(S.diasLib || []); S.diasLib = v?.dias || [];
+    if (S.role && !PANEL(S.role) && (prev !== S.ativa || dch) && !document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; render(); scrollTo(0, y); } else softRender(); }, () => {});
   S.db.collection('avaliacoes').onSnapshot(s => { S.avals = s.docs.map(d => d.data()).filter(Boolean); if (PANEL(S.role) && S.tab === 'avaliacoes' && S.screen === 'auto') render(); }, () => {});
   // envia avaliações guardadas sem conexão
   setTimeout(async () => { const loc = LS.get('avals', []); let ch = false; for (const a of loc) { if (!a.sync && S.mode === 'online') { try { const { sync, ...rec } = a; await S.db.collection('avaliacoes').add(rec); a.sync = true; ch = true; } catch {} } } if (ch) LS.set('avals', loc); }, 4000);
@@ -823,11 +824,11 @@ function railHTML(g) {
     <ol class="tl">${ETAPAS.filter(e => e.dia === day).map(e => {
       if (e.tipo === 'pausa') return `<li class="pausa"><button disabled><span class="t">${hm(e.ini)}</span><span class="n">${esc(e.sessao)}</span><span></span></button></li>`;
       const st = statusOf(e.id, g.id); const isAct = e.id === act.id;
-      const pill = st === 'enviada' ? '<span class="s ok">Enviado</span>' : (isAct && !DEMO) ? '<span class="s agora">Agora</span>' : '';
-      const sel = e.id === S.view;
-      return `<li class="${sel ? 'ativa' : ''}"><button data-go="${e.id}" ${sel ? 'aria-current="step"' : ''}><span class="t">${hm(e.ini)}</span><span class="n">${e.ex ? `<b class="mono" style="font-size:12px">Ex. ${e.ex}</b> ` : ''}${esc(e.sessao)}</span>${pill}</button></li>`;
+      const pill = st === 'enviada' ? '<span class="s ok">Enviado</span>' : !dayOpen(e.dia) ? `<span class="s">Abre ${DIA_DATA[e.dia]}</span>` : (isAct && !DEMO) ? '<span class="s agora">Agora</span>' : '';
+      const sel = e.id === S.view; const op = dayOpen(e.dia);
+      return `<li class="${sel ? 'ativa' : ''}"><button ${op ? `data-go="${e.id}"` : 'disabled'} ${sel ? 'aria-current="step"' : ''}><span class="t">${hm(e.ini)}</span><span class="n">${e.ex ? `<b class="mono" style="font-size:12px">Ex. ${e.ex}</b> ` : ''}${esc(e.sessao)}</span>${pill}</button></li>`;
     }).join('')}</ol>
-    <p class="muted" style="font-size:12.5px;margin:6px 2px">Toque em qualquer atividade para abrir. Os exercícios ficam abertos para escrever, alterar e salvar. Depois de enviado, o registro segue para a equipe e não pode mais ser alterado.</p>`;
+    <p class="muted" style="font-size:12.5px;margin:6px 2px">${dayOpen(day) ? 'Toque em qualquer atividade para abrir. Os exercícios ficam abertos para escrever, alterar e salvar.' : `As atividades do Dia ${day} abrem no início do dia, em ${DIA_DATA[day]}.`} Depois de enviado, o registro segue para a equipe e não pode mais ser alterado.</p>`;
 }
 function stepsHTML(e) {
   let t = toMin(e.ini);
@@ -844,7 +845,10 @@ function stageHead(e, g) {
       <div class="timer" data-timer="${e.id}"><div class="row"><span class="big"></span><span class="sub muted"></span></div><div class="bar"><i></i></div></div>
     </div>`;
 }
-const isOpen = (e) => true;
+const DIA_INI = { 1: '2026-11-16T07:00:00-03:00', 2: '2026-11-17T07:00:00-03:00', 3: '2026-11-18T07:00:00-03:00' };
+const DIA_DATA = { 1: '16/11', 2: '17/11', 3: '18/11' };
+const dayOpen = (d) => d === 1 || DEMO || PANEL(S.role) || (S.diasLib || []).includes(d) || Date.now() >= Date.parse(DIA_INI[d]);
+const isOpen = (e) => dayOpen(e.dia);
 function stageHTML(e, g, act) {
   const order = WORK.findIndex(x => x.id === e.id), actOrder = WORK.findIndex(x => x.id === act.id);
   const doc = getDoc(e.id, g.id);
@@ -852,9 +856,7 @@ function stageHTML(e, g, act) {
     return `<article class="stage"><div class="pausebox"><h2>${esc(e.exNome || e.sessao)}</h2><p>Enviado às <b>${hhmm(doc.enviadoEm)}</b>. O registro foi entregue à equipe de facilitação e, por segurança, não fica mais visível nem editável neste aparelho.</p><button class="btn" data-go="${act.id}">Ir para o exercício atual</button></div></article>`;
   }
   if (!isOpen(e)) {
-    const msg = doc.status === 'enviada' ? `<h2>${esc(e.exNome || e.sessao)}</h2><p>Enviado às <b>${hhmm(doc.enviadoEm)}</b>. Depois do envio não é possível voltar nem editar.</p>`
-      : order > actOrder ? `<h2>${esc(e.exNome || e.sessao)}</h2><p>Ainda não liberado. A equipe libera cada exercício no horário da programação: <b>${hm(e.ini)}–${hm(e.fim)}</b>.</p>`
-      : `<h2>${esc(e.exNome || e.sessao)}</h2><p>Etapa encerrada.</p>`;
+    const msg = `<h2>${esc(e.exNome || e.sessao)}</h2><p>As atividades do Dia ${e.dia} abrem no início do dia, em <b>${DIA_DATA[e.dia]}</b>. Horário desta atividade: <b>${hm(e.ini)}–${hm(e.fim)}</b>.</p>`;
     return `<article class="stage"><div class="pausebox">${msg}<button class="btn" data-go="${act.id}">Ir para o exercício atual</button></div></article>`;
   }
   const sent = doc.status === 'enviada';
@@ -1053,6 +1055,7 @@ document.addEventListener('change', async ev => { const t = ev.target;
   if (t.dataset.pmesa) { const p = (S.parts || []).find(x => String(x.id) === t.dataset.pmesa); if (p) { await savePart({ ...p, mesa: t.value }); credRender(); } } });
 document.addEventListener('click', async ev => {
   const b = ev.target.closest('button'); if (!b) return;
+  if (b.dataset.libdia) { const d = Number(b.dataset.libdia); const cur = S.diasLib || []; const nv = cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort(); try { await S.db.liberarDias(nv); S.diasLib = nv; toast(cur.includes(d) ? `Dia ${d} fechado para as mesas` : `Dia ${d} liberado para as mesas`); } catch { toast('Não foi possível alterar agora. Verifique a conexão.'); } render(); return; }
   if (b.dataset.pdia) { S.credDia = b.dataset.pdia; credRender(); return; }
   if (b.id === 'cred-novo') { S.credEdit = 'novo'; credRender(); const el = $('[data-pform="novo"] [data-pf="nome"]'); if (el) el.focus(); return; }
   if (b.id === 'cred-csv') { credCSV(); return; }
@@ -1173,9 +1176,13 @@ function panelHTML() {
 }
 function afterPanel() { tick(); }
 function dotsFor(e) { return `<span class="dots">${GRUPOS.map(g => { const s = statusOf(e.id, g.id); return `<i class="${s === 'enviada' ? 'ok' : s === 'andamento' ? 'and' : ''}" style="--gc:${g.cor}" title="${esc(g.nome)}: ${s === 'enviada' ? 'enviado' : s === 'andamento' ? 'em rascunho' : 'sem registro'}"></i>`; }).join('')}</span>`; }
+function diasHTML() {
+  if (S.role !== 'equipe') return '';
+  return `<div class="banner" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><b>Abertura dos dias para as mesas:</b> Dia 1 aberto${[2, 3].map(d => { const auto = Date.now() >= Date.parse(DIA_INI[d]); const lib = (S.diasLib || []).includes(d); return auto ? ` · Dia ${d} aberto (início do dia)` : ` · <button class="btn small ${lib ? '' : 'ghost'}" data-libdia="${d}">${lib ? `Dia ${d} liberado · fechar` : `Liberar Dia ${d} agora`}</button>`; }).join('')}<span class="muted" style="font-size:13px">Sem ação da equipe, cada dia abre sozinho às 7h de ${DIA_DATA[2]} e ${DIA_DATA[3]}.</span></div>`;
+}
 function conducaoHTML() {
   const act = activeStage(); const ck = clockStage();
-  return `<div class="ctrl">
+  return `${diasHTML()}<div class="ctrl">
     <div style="display:grid;gap:14px;min-width:0">
       <div class="now-card"><span class="eyebrow" style="color:rgba(255,255,255,.75)">${S.ativa ? 'Etapa liberada pela equipe' : 'Seguindo o relógio'} · ${esc(DIAS[act.dia - 1].rotulo)}</span>
         <h2>${esc(act.sessao)}</h2><span class="mono">${hm(act.ini)}–${hm(act.fim)} · ${esc(act.quem || '')}</span>
