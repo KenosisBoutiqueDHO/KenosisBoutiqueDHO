@@ -611,11 +611,13 @@ function SupaDB(codigo) {
 function loginHTML(msg) {
   const eq = S.loginEquipe;
   if (!eq) return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso das mesas</span><h2>Aponte a câmera do celular para o QR Code da sua mesa</h2><p class="muted" style="margin:0">O sistema abre direto no seu grupo. Para trocar de grupo em outro exercício, basta ler o QR Code da nova mesa.</p></div>
-    <div class="stage-body">${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<button class="btn ghost" id="login-equipe">Acesso da equipe Kenosis</button></div></article></div></div>`;
-  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Bastidores</span><h2>Código de acesso da equipe Kenosis</h2><p class="muted" style="margin:0">Painel de condução, credenciamento e respostas de todos os grupos.</p></div>
+    <div class="stage-body">${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<button class="btn ghost" id="login-equipe">Acesso da equipe Kenosis ou da UNODC</button></div></article></div></div>`;
+  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Bastidores</span><h2>Código de acesso</h2><p class="muted" style="margin:0">Equipe Kenosis: painel completo. UNODC: tabela de credenciamento.</p></div>
     <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="password" id="cod" autocomplete="off" autocapitalize="characters" placeholder="Código" style="font-size:22px;letter-spacing:.08em;text-transform:uppercase"></div>
     ${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="entrar">Entrar</button><button class="btn ghost" id="voltar-mesas">Voltar</button></div></div></article></div></div>`;
 }
+const TROCA_INI = '2026-11-16T10:20:00-03:00';
+function podeTrocar() { if (!S.role || PANEL(S.role) || DEMO) return true; const ex1 = WORK.find(x => x.ex === 1); return Date.now() >= Date.parse(TROCA_INI) || (ex1 && getDoc(ex1.id, S.role).status === 'enviada'); }
 async function purgeMesa(old, oldCode) {
   // antes de trocar de grupo: envia o que estiver pendente e apaga do aparelho o conteúdo do grupo anterior
   for (const id of Object.keys(S.resp)) { const d = S.resp[id]; if (!d || d.grupo !== old) continue;
@@ -627,7 +629,8 @@ async function entrar(codeArg) {
   try { const papel = await rpc('ef_entrar', { p_codigo: c });
     if (!papel) { S.screen = 'login'; $('#app').innerHTML = loginHTML('Código não reconhecido. Confira e tente de novo.'); return; }
     S.loginEquipe = false;
-    if (papel === 'participante' || papel === 'unodc') { S.screen = 'login'; $('#app').innerHTML = loginHTML('Código não reconhecido.'); return; }
+    if (papel === 'participante') { S.screen = 'login'; $('#app').innerHTML = loginHTML('Código não reconhecido.'); return; }
+    if (S.role && /^mesa/.test(S.role) && /^mesa/.test(papel) && papel !== S.role && !podeTrocar()) { toast('Este aparelho está no grupo da ' + G[S.role].papel + '. A troca de grupo fica liberada a partir do Exercício 2.'); S.screen = 'auto'; render(); return; }
     if (false) { LS.set('evento', c); S.screen = 'auto'; S.role = null; if (S.pendingMesa) { const m = S.pendingMesa; S.pendingMesa = null; selectMesa(m); return; } render(); return; }
     const old = S.role, oldCode = LS.get('codigo', null);
     if (S.db && S.db.stop) S.db.stop();
@@ -776,9 +779,9 @@ function render() {
   if (S.screen === 'mapa') { who.innerHTML = (S.role ? `<a class="navbtn" href="#">Voltar</a>` : `<a class="navbtn" href="#">Início</a>`); app.innerHTML = mapaHTML(); return; }
   if (S.screen === 'avaliacao') { who.innerHTML = `<a class="navbtn" href="#">Sair da avaliação</a>`; app.innerHTML = avaliacaoHTML(); return; }
   if (!S.role) { who.innerHTML = nav; app.innerHTML = homeHTML(); return; }
-  if (PANEL(S.role)) { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">Equipe Kenosis · sair</button>`; app.innerHTML = panelHTML(); afterPanel(); return; }
+  if (PANEL(S.role)) { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">${S.role === 'unodc' ? 'UNODC' : 'Equipe Kenosis'} · sair</button>`; app.innerHTML = panelHTML(); afterPanel(); return; }
   const g = G[S.role]; document.documentElement.style.setProperty('--g', g.cor);
-  who.innerHTML = nav + ` <button class="chip" id="trocar" title="Sair desta mesa"><span class="dot"></span>${esc(g.papel)} · sair</button>`;
+  who.innerHTML = nav + (podeTrocar() ? ` <button class="chip" id="trocar" title="Sair desta mesa"><span class="dot"></span>${esc(g.papel)} · sair</button>` : ` <span class="chip" title="A troca de grupo fica liberada a partir do Exercício 2"><span class="dot"></span>${esc(g.papel)}</span>`);
   app.innerHTML = tabletHTML(g); tick();
 }
 function softRender() {
@@ -1175,7 +1178,7 @@ async function liberar(id) {
   render();
 }
 function panelHTML() {
-  const tabs = S.role === 'unodc' ? [['credenciamento', 'Credenciamento'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['avaliacoes', 'Avaliações'], ['exportar', 'Exportar']]
+  const tabs = S.role === 'unodc' ? [['credenciamento', 'Credenciamento']]
     : [['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['exportar', 'Exportar e importar']];
   if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
   return `<div class="wrap"><div class="panel">
