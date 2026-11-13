@@ -779,7 +779,7 @@ function render() {
   if (S.screen === 'mapa') { who.innerHTML = (S.role ? `<a class="navbtn" href="#">Voltar</a>` : `<a class="navbtn" href="#">Início</a>`); app.innerHTML = mapaHTML(); return; }
   if (S.screen === 'avaliacao') { who.innerHTML = `<a class="navbtn" href="#">Sair da avaliação</a>`; app.innerHTML = avaliacaoHTML(); return; }
   if (!S.role) { who.innerHTML = nav; app.innerHTML = homeHTML(); return; }
-  if (PANEL(S.role)) { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">${S.role === 'unodc' ? 'UNODC' : 'Equipe Kenosis'} · sair</button>`; app.innerHTML = panelHTML(); afterPanel(); return; }
+  if (PANEL(S.role)) { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">${S.role === 'unodc' ? 'UNODC' : 'Equipe Kenosis'} · sair</button>`; app.innerHTML = (S.role === 'equipe' && S.eqEdit) ? eqEditHTML() : panelHTML(); afterPanel(); return; }
   const g = G[S.role]; document.documentElement.style.setProperty('--g', g.cor);
   who.innerHTML = nav + (podeTrocar() ? ` <button class="chip" id="trocar" title="Sair desta mesa"><span class="dot"></span>${esc(g.papel)} · sair</button>` : ` <span class="chip" title="A troca de grupo fica liberada a partir do Exercício 2"><span class="dot"></span>${esc(g.papel)}</span>`);
   app.innerHTML = tabletHTML(g); tick();
@@ -975,6 +975,7 @@ function setPath(obj, path, val) {
 function getPath(obj, path) { return path.split('.').reduce((o, k) => o == null ? undefined : o[k], obj); }
 
 function editDoc(formEl, mut) {
+  if (formEl.dataset.equipe && S.eqEdit) { const d = S.eqEdit; const e = E[d.etapa]; const g = G[d.grupo]; d.dados = d.dados || {}; e.campos.forEach(f => { if ((f.t === 'clinica' || f.t === 'priorizacao') && !Array.isArray(d.dados[f.k])) d.dados[f.k] = JSON.parse(JSON.stringify(f.t === 'clinica' ? clinicaItems(g) : priorItems(g))); }); mut(d.dados); S.eqDirty = true; const st = $('#eqstate'); if (st) st.textContent = 'Alterações não salvas'; return; }
   const id = formEl.dataset.doc; const doc = S.resp[id]; if (!doc || doc.status === 'enviada') return; const e = E[doc.etapa]; const g = G[doc.grupo];
   // materializa listas derivadas na primeira edição
   e.campos.forEach(f => { if ((f.t === 'clinica' || f.t === 'priorizacao') && !Array.isArray(doc.dados[f.k])) doc.dados[f.k] = JSON.parse(JSON.stringify(f.t === 'clinica' ? clinicaItems(g) : priorItems(g))); });
@@ -1069,6 +1070,12 @@ document.addEventListener('change', async ev => { const t = ev.target;
   if (t.dataset.pmesa) { const p = (S.parts || []).find(x => String(x.id) === t.dataset.pmesa); if (p) { await savePart({ ...p, mesa: t.value }); credRender(); } } });
 document.addEventListener('click', async ev => {
   const b = ev.target.closest('button'); if (!b) return;
+  if (b.dataset.eqedit) { const id = docId(b.dataset.eqstage, b.dataset.eqedit); const d = S.resp[id] || { etapa: b.dataset.eqstage, grupo: b.dataset.eqedit, status: 'vazio', dados: {} }; S.eqEdit = JSON.parse(JSON.stringify(d)); S.eqEdit.dados = S.eqEdit.dados || {}; S.eqDirty = false; render(); scrollTo(0, 0); return; }
+  if (b.dataset.eqback) { if (S.eqDirty && !b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Há alterações não salvas. Toque de novo para sair'; return; } S.eqEdit = null; S.eqDirty = false; render(); return; }
+  if (b.dataset.eqsave) { const d = S.eqEdit; const st = $('#eqst')?.value || 'andamento'; const id = docId(d.etapa, d.grupo); const now = Date.now();
+    const doc = { ...d, status: st, atualizadoEm: now, editadoPorEquipe: now, enviadoEm: st === 'enviada' ? (d.enviadoEm || now) : null };
+    try { await rpc('ef_salvar_equipe', { p_codigo: LS.get('codigo', null), p_id: id, p_doc: doc }); S.resp[id] = JSON.parse(JSON.stringify(doc)); S.eqEdit = JSON.parse(JSON.stringify(doc)); S.eqDirty = false; toast('Alterações salvas na base'); render(); }
+    catch { toast('Não foi possível salvar agora. Verifique a conexão e tente de novo.'); } return; }
   if (b.dataset.libdia) { const d = Number(b.dataset.libdia); const cur = S.diasLib || []; const nv = cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort(); try { await S.db.liberarDias(nv); S.diasLib = nv; toast(cur.includes(d) ? `Dia ${d} fechado para as mesas` : `Dia ${d} liberado para as mesas`); } catch { toast('Não foi possível alterar agora. Verifique a conexão.'); } render(); return; }
   if (b.dataset.pdia) { S.credDia = b.dataset.pdia; credRender(); return; }
   if (b.id === 'cred-novo') { S.credEdit = 'novo'; credRender(); const el = $('[data-pform="novo"] [data-pf="nome"]'); if (el) el.focus(); return; }
@@ -1221,11 +1228,23 @@ function valueText(f, v) {
   if (f.t === 'priorizacao') return v.filter(x => x?.demanda).map((it, i) => `${i + 1}. ${it.demanda} · total ${f.crit.reduce((a, _, c) => a + (Number(it['c' + c]) || 0), 0)} · ${it.horizonte || 'sem horizonte'}`).join('\n');
   return String(v);
 }
+function eqEditHTML() {
+  const d = S.eqEdit; const e = E[d.etapa]; const g = G[d.grupo];
+  return `<div class="wrap" style="padding-top:18px;padding-bottom:40px"><article class="stage" data-stage="${e.id}">
+    <div class="stage-head"><span class="eyebrow">Edição da equipe Kenosis · bastidores</span><h2>${esc(g.nome)} · ${esc(e.exNome)}</h2>
+      <p class="muted" style="margin:0">Dia ${e.dia} · ${hm(e.ini)}–${hm(e.fim)}. Toda alteração fica registrada no histórico, com a versão anterior.</p></div>
+    <div class="stage-body">
+      <div class="toolbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <label class="eyebrow" for="eqst">Situação</label><select id="eqst"><option value="andamento" ${d.status !== 'enviada' ? 'selected' : ''}>Aberto para o grupo (rascunho)</option><option value="enviada" ${d.status === 'enviada' ? 'selected' : ''}>Enviado (fechado para o grupo)</option></select>
+        <button class="btn" data-eqsave="1">Salvar alterações</button><button class="btn ghost" data-eqback="1">Voltar às respostas</button><span id="eqstate" class="muted">${S.eqDirty ? 'Alterações não salvas' : 'Sem alterações pendentes'}</span></div>
+      <div class="form" data-doc="${docId(e.id, g.id)}" data-equipe="1"><h3>Registro do ${esc(g.nome)}</h3>${e.campos.map(f => fieldHTML(f, d.dados || {}, true, e, g)).join('')}</div>
+    </div></article></div>`;
+}
 function respostasHTML() {
   const sid = S.respStage && E[S.respStage] ? S.respStage : activeStage().id; const e = E[sid];
   return `<div style="display:grid;gap:14px"><div class="toolbar"><label for="resp-stage" class="eyebrow">Etapa</label><select id="resp-stage">${WORK.filter(x => x.ex).map(x => `<option value="${x.id}" ${x.id === sid ? 'selected' : ''}>Dia ${x.dia} · ${hm(x.ini)} · ${esc(x.exNome || x.sessao)}</option>`).join('')}</select></div>
     <div class="cols4">${GRUPOS.map(g => { const d = S.resp[docId(sid, g.id)]; const st = d?.status || 'vazio';
-      return `<div class="col" style="--gc:${g.cor}"><div style="display:flex;justify-content:space-between;gap:8px"><span class="gtag" style="--gc:${g.cor}">${esc(g.nome)}</span><span class="s ${st === 'enviada' ? 'ok' : st === 'andamento' ? 'and' : ''}" style="font-size:12px">${st === 'enviada' ? 'Enviado ' + hhmm(d.enviadoEm) : st === 'andamento' ? 'Rascunho' : 'Sem registro'}</span></div>
+      return `<div class="col" style="--gc:${g.cor}"><div style="display:flex;justify-content:space-between;gap:8px"><span class="gtag" style="--gc:${g.cor}">${esc(g.nome)}</span>${S.role === 'equipe' ? `<button class="btn small ghost" data-eqedit="${g.id}" data-eqstage="${sid}">Editar</button>` : ''}<span class="s ${st === 'enviada' ? 'ok' : st === 'andamento' ? 'and' : ''}" style="font-size:12px">${st === 'enviada' ? 'Enviado ' + hhmm(d.enviadoEm) : st === 'andamento' ? 'Rascunho' : 'Sem registro'}</span></div>
         ${d ? `<dl>${e.campos.map(f => { const t = valueText(f, d.dados?.[f.k]); return t ? `<div><dt>${esc(f.l || f.item)}</dt><dd>${esc(t)}</dd></div>` : ''; }).join('') || '<p class="empty">Nada registrado ainda.</p>'}</dl>` : '<p class="empty">Nada registrado ainda.</p>'}</div>`; }).join('')}</div></div>`;
 }
 function matrizRows() {
