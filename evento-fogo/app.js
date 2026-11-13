@@ -589,7 +589,7 @@ function SupaDB(codigo) {
       L.termometro.forEach(([cb]) => cb(snap(last.termometro)));
       L.avaliacoes.forEach(([cb]) => cb({ docs: (last.avaliacoes || []).map((v, i) => ({ id: String(i), data: () => v })) }));
       (L.participantes || []).forEach(([cb]) => cb(last.participantes || null, last.mesa_participantes || null));
-    } catch (e) { if (/acesso negado/.test(String(e)) && alive) { alive = false; clearInterval(iv); LS.del('codigo'); LS.del('role'); S.role = null; S.db = null; S.screen = 'login'; $('#app').innerHTML = loginHTML('Este código não é mais válido. Use o QR Code ou o código da mesa.'); return; } [...L.respostas, ...L.controle].forEach(([, err]) => err && err(e)); }
+    } catch (e) { if (/acesso negado/.test(String(e)) && alive) { alive = false; clearInterval(iv); LS.del('codigo'); LS.del('role'); S.role = null; S.db = null; S.screen = 'login'; $('#app').innerHTML = loginHTML('Este acesso não é mais válido. Leia o QR Code da mesa.'); return; } [...L.respostas, ...L.controle].forEach(([, err]) => err && err(e)); }
   }
   let alive = true; const iv = setInterval(() => alive && poll(), 4000); setTimeout(() => alive && poll(), 50);
   const key = (p) => p.split('/')[0];
@@ -610,17 +610,28 @@ function SupaDB(codigo) {
 }
 function loginHTML(msg) {
   const eq = S.loginEquipe;
-  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso ao sistema do encontro</span><h2>${eq ? 'Código de acesso da equipe ou da UNODC' : 'Acesso da mesa'}</h2><p class="muted" style="margin:0">${eq ? 'Acesso ao painel, ao credenciamento e às respostas dos grupos.' : 'Aponte a câmera do celular para o QR Code da mesa ou digite o código impresso abaixo dele.'}</p></div>
-    <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="text" id="cod" autocomplete="off" autocapitalize="characters" placeholder="${eq ? 'Código' : 'MESA00-XXXXXXXX'}" style="font-size:24px;letter-spacing:.08em;text-transform:uppercase"></div>
-    ${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="entrar">Entrar</button>${eq ? `<button class="btn ghost" id="voltar-mesas">Voltar</button>` : `<button class="btn ghost" id="login-equipe">Equipe de facilitação ou UNODC</button>`}</div></div></article></div></div>`;
+  if (!eq) return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso das mesas</span><h2>Aponte a câmera do celular para o QR Code da sua mesa</h2><p class="muted" style="margin:0">O sistema abre direto no seu grupo. Para trocar de grupo em outro exercício, basta ler o QR Code da nova mesa.</p></div>
+    <div class="stage-body">${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<button class="btn ghost" id="login-equipe">Acesso da equipe Kenosis</button></div></article></div></div>`;
+  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Bastidores</span><h2>Código de acesso da equipe Kenosis</h2><p class="muted" style="margin:0">Painel de condução, credenciamento e respostas de todos os grupos.</p></div>
+    <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="password" id="cod" autocomplete="off" autocapitalize="characters" placeholder="Código" style="font-size:22px;letter-spacing:.08em;text-transform:uppercase"></div>
+    ${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="entrar">Entrar</button><button class="btn ghost" id="voltar-mesas">Voltar</button></div></div></article></div></div>`;
+}
+async function purgeMesa(old, oldCode) {
+  // antes de trocar de grupo: envia o que estiver pendente e apaga do aparelho o conteúdo do grupo anterior
+  for (const id of Object.keys(S.resp)) { const d = S.resp[id]; if (!d || d.grupo !== old) continue;
+    if (S.dirty[id] && oldCode && d.status !== 'enviada') { try { await rpc('ef_salvar', { p_codigo: oldCode, p_id: id, p_doc: d }); } catch {} }
+    delete S.resp[id]; delete S.dirty[id]; LS.del('r:' + id); }
 }
 async function entrar(codeArg) {
   const c = (codeArg || $('#cod')?.value || '').trim().toUpperCase(); if (!c) return;
   try { const papel = await rpc('ef_entrar', { p_codigo: c });
     if (!papel) { S.screen = 'login'; $('#app').innerHTML = loginHTML('Código não reconhecido. Confira e tente de novo.'); return; }
     S.loginEquipe = false;
-    if (papel === 'participante') { LS.set('evento', c); S.screen = 'auto'; S.role = null; if (S.pendingMesa) { const m = S.pendingMesa; S.pendingMesa = null; selectMesa(m); return; } render(); return; }
+    if (papel === 'participante' || papel === 'unodc') { S.screen = 'login'; $('#app').innerHTML = loginHTML('Código não reconhecido.'); return; }
+    if (false) { LS.set('evento', c); S.screen = 'auto'; S.role = null; if (S.pendingMesa) { const m = S.pendingMesa; S.pendingMesa = null; selectMesa(m); return; } render(); return; }
+    const old = S.role, oldCode = LS.get('codigo', null);
     if (S.db && S.db.stop) S.db.stop();
+    if (old && old !== papel && /^mesa/.test(old)) await purgeMesa(old, oldCode);
     LS.set('codigo', c); S.role = papel; LS.set('role', papel); S.screen = 'auto'; startSupa(c); render(); }
   catch { S.screen = 'login'; $('#app').innerHTML = loginHTML('Não foi possível conectar. Verifique a internet e tente de novo.'); }
 }
@@ -765,7 +776,7 @@ function render() {
   if (S.screen === 'mapa') { who.innerHTML = (S.role ? `<a class="navbtn" href="#">Voltar</a>` : `<a class="navbtn" href="#">Início</a>`); app.innerHTML = mapaHTML(); return; }
   if (S.screen === 'avaliacao') { who.innerHTML = `<a class="navbtn" href="#">Sair da avaliação</a>`; app.innerHTML = avaliacaoHTML(); return; }
   if (!S.role) { who.innerHTML = nav; app.innerHTML = homeHTML(); return; }
-  if (PANEL(S.role)) { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">${S.role === 'unodc' ? 'UNODC' : 'Equipe de facilitação'} · sair</button>`; app.innerHTML = panelHTML(); afterPanel(); return; }
+  if (PANEL(S.role)) { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">Equipe Kenosis · sair</button>`; app.innerHTML = panelHTML(); afterPanel(); return; }
   const g = G[S.role]; document.documentElement.style.setProperty('--g', g.cor);
   who.innerHTML = nav + ` <button class="chip" id="trocar" title="Sair desta mesa"><span class="dot"></span>${esc(g.papel)} · sair</button>`;
   app.innerHTML = tabletHTML(g); tick();
@@ -1065,7 +1076,7 @@ document.addEventListener('click', async ev => {
   if (b.dataset.psave) { const box = b.closest('[data-pform]'); const doc = readPform(box); if (b.dataset.psave !== 'novo') doc.id = Number(b.dataset.psave); if (!doc.nome) { toast('Informe o nome do participante.'); return; } if (await savePart(doc)) { S.credEdit = null; credRender(); } return; }
   if (b.dataset.hash) { if (S.pendingStage) { location.hash = b.dataset.hash + '-' + S.pendingStage; S.pendingStage = null; } else location.hash = b.dataset.hash; return; }
   if (b.id === 'login-equipe') { S.loginEquipe = true; S.screen = 'login'; render(); return; }
-  if (b.id === 'voltar-mesas') { S.loginEquipe = false; S.screen = LS.get('evento', null) ? 'auto' : 'login'; render(); return; }
+  if (b.id === 'voltar-mesas') { S.loginEquipe = false; S.screen = 'login'; render(); return; }
   if (b.id === 'sair-evento') { LS.del('evento'); leaveMesa(); S.screen = 'login'; render(); return; }
   if (SUPA && b.dataset.role === 'equipe') { S.loginEquipe = true; S.screen = 'login'; render(); return; }
   if (b.dataset.role) { S.role = b.dataset.role; LS.set('role', S.role); S.view = null; S.dayView = null; if (S.pendingStage && !PANEL(S.role)) { S.view = S.pendingStage; S.dayView = E[S.pendingStage].dia; } S.pendingStage = null; render(); scrollTo(0, 0); return; }
