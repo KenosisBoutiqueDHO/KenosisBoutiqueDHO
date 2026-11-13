@@ -824,10 +824,10 @@ function railHTML(g) {
       if (e.tipo === 'pausa') return `<li class="pausa"><button disabled><span class="t">${hm(e.ini)}</span><span class="n">${esc(e.sessao)}</span><span></span></button></li>`;
       const st = statusOf(e.id, g.id); const isAct = e.id === act.id;
       const pill = st === 'enviada' ? '<span class="s ok">Enviado</span>' : (isAct && !DEMO) ? '<span class="s agora">Agora</span>' : '';
-      const sel = DEMO ? e.id === S.view : isAct;
-      return `<li class="${sel ? 'ativa' : ''}"><button ${isAct || DEMO ? `data-go="${e.id}"` : 'disabled'}><span class="t">${hm(e.ini)}</span><span class="n">${e.ex ? `<b class="mono" style="font-size:12px">Ex. ${e.ex}</b> ` : ''}${esc(e.sessao)}</span>${pill}</button></li>`;
+      const sel = e.id === S.view;
+      return `<li class="${sel ? 'ativa' : ''}"><button data-go="${e.id}" ${sel ? 'aria-current="step"' : ''}><span class="t">${hm(e.ini)}</span><span class="n">${e.ex ? `<b class="mono" style="font-size:12px">Ex. ${e.ex}</b> ` : ''}${esc(e.sessao)}</span>${pill}</button></li>`;
     }).join('')}</ol>
-    <p class="muted" style="font-size:12.5px;margin:6px 2px">${DEMO ? 'Demonstração: todos os exercícios estão abertos para conhecer. No encontro, só o exercício liberado pela equipe fica aberto.' : 'Só o exercício liberado pela equipe fica aberto.'} Depois de enviado, não é possível voltar nem editar.</p>`;
+    <p class="muted" style="font-size:12.5px;margin:6px 2px">Toque em qualquer atividade para abrir. Os exercícios ficam abertos para escrever, alterar e salvar. Depois de enviado, o registro segue para a equipe e não pode mais ser alterado.</p>`;
 }
 function stepsHTML(e) {
   let t = toMin(e.ini);
