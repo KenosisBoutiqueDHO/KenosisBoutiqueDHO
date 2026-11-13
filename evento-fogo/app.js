@@ -547,7 +547,7 @@ function clockStage() {
   const m = nowMin();
   return ETAPAS.find(e => e.dia === d && m >= toMin(e.ini) && m < toMin(e.fim)) || null;
 }
-function activeStage() { return S.ativa && E[S.ativa] ? E[S.ativa] : (clockStage() || WORK[0]); }
+function activeStage() { const a = S.ativa && E[S.ativa] ? E[S.ativa] : (clockStage() || WORK[0]); if (a.ex || PANEL(S.role)) return a; const i = WORK.findIndex(x => x.id === a.id); return WORK.slice(i).find(x => x.ex) || a; }
 function tick() {
   const d = new Date(); $('#clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   document.querySelectorAll('[data-timer]').forEach(el => paintTimer(el, E[el.dataset.timer]));
@@ -589,7 +589,7 @@ function SupaDB(codigo) {
       L.termometro.forEach(([cb]) => cb(snap(last.termometro)));
       L.avaliacoes.forEach(([cb]) => cb({ docs: (last.avaliacoes || []).map((v, i) => ({ id: String(i), data: () => v })) }));
       (L.participantes || []).forEach(([cb]) => cb(last.participantes || null, last.mesa_participantes || null));
-    } catch (e) { [...L.respostas, ...L.controle].forEach(([, err]) => err && err(e)); }
+    } catch (e) { if (/acesso negado/.test(String(e)) && alive) { alive = false; clearInterval(iv); LS.del('codigo'); LS.del('role'); S.role = null; S.db = null; S.screen = 'login'; $('#app').innerHTML = loginHTML('Este código não é mais válido. Use o QR Code ou o código da mesa.'); return; } [...L.respostas, ...L.controle].forEach(([, err]) => err && err(e)); }
   }
   let alive = true; const iv = setInterval(() => alive && poll(), 4000); setTimeout(() => alive && poll(), 50);
   const key = (p) => p.split('/')[0];
@@ -609,8 +609,8 @@ function SupaDB(codigo) {
 }
 function loginHTML(msg) {
   const eq = S.loginEquipe;
-  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso ao sistema do encontro</span><h2>${eq ? 'Código de acesso da equipe ou da UNODC' : 'Digite o código do encontro'}</h2><p class="muted" style="margin:0">${eq ? 'Acesso ao painel, ao credenciamento e às respostas dos grupos.' : 'O código é o mesmo para todas as mesas. Depois de entrar, basta escolher a mesa.'}</p></div>
-    <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="text" id="cod" autocomplete="off" autocapitalize="characters" placeholder="${eq ? 'Código' : 'FOGO-'}" style="font-size:24px;letter-spacing:.08em;text-transform:uppercase"></div>
+  return `<div class="wrap"><div class="kiosk"><article class="stage"><div class="stage-head"><span class="eyebrow">Acesso ao sistema do encontro</span><h2>${eq ? 'Código de acesso da equipe ou da UNODC' : 'Acesso da mesa'}</h2><p class="muted" style="margin:0">${eq ? 'Acesso ao painel, ao credenciamento e às respostas dos grupos.' : 'Aponte a câmera do celular para o QR Code da mesa ou digite o código impresso abaixo dele.'}</p></div>
+    <div class="stage-body"><div class="fld"><label for="cod">Código</label><input type="text" id="cod" autocomplete="off" autocapitalize="characters" placeholder="${eq ? 'Código' : 'MESA00-XXXXXXXX'}" style="font-size:24px;letter-spacing:.08em;text-transform:uppercase"></div>
     ${msg ? `<p class="banner">${esc(msg)}</p>` : ''}<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="entrar">Entrar</button>${eq ? `<button class="btn ghost" id="voltar-mesas">Voltar</button>` : `<button class="btn ghost" id="login-equipe">Equipe de facilitação ou UNODC</button>`}</div></div></article></div></div>`;
 }
 async function entrar(codeArg) {
@@ -629,7 +629,7 @@ function selectMesa(id, stage) {
   S.screen = 'auto'; if (stage && E[stage] && E[stage].tipo !== 'pausa') { S.view = stage; S.dayView = E[stage].dia; } else { S.view = null; S.dayView = null; }
   render(); scrollTo(0, 0);
 }
-function leaveMesa() { if (S.db && S.db.stop) S.db.stop(); S.db = null; S.role = null; LS.del('role'); LS.del('codigo'); S.view = null; if (location.hash) history.replaceState(null, '', location.pathname); render(); scrollTo(0, 0); }
+function leaveMesa() { if (S.db && S.db.stop) S.db.stop(); S.db = null; S.role = null; LS.del('role'); LS.del('codigo'); S.view = null; if (SUPA) S.screen = 'login'; if (location.hash) history.replaceState(null, '', location.pathname); render(); scrollTo(0, 0); }
 
 // ---------- sincronização ----------
 function setSync() {
@@ -640,7 +640,7 @@ function startSupa(c) {
   S.db = SupaDB(c); S.mode = 'connecting'; setSync(); loadLocal(); attachDb();
 }
 async function connect() {
-  if (SUPA) { const c = LS.get('codigo', null); if (!c) { S.mode = 'local'; setSync(); if (!LS.get('evento', null)) S.screen = 'login'; route(); return; } S.role = LS.get('role', null); startSupa(c); route(); return; }
+  if (SUPA) { LS.del('evento'); const c = LS.get('codigo', null); if (!c) { S.mode = 'local'; setSync(); if (!LS.get('evento', null)) S.screen = 'login'; route(); return; } S.role = LS.get('role', null); startSupa(c); route(); return; }
   if (DEMO) { S.mode = 'demo'; setSync(); loadLocal(); render(); return; }
   let to = setTimeout(() => { if (S.mode === 'connecting') { S.mode = 'local'; setSync(); loadLocal(); render(); } }, 10000);
   try { S.db = await window.claude?.use?.('db'); } catch { S.db = null; }
@@ -657,6 +657,7 @@ function attachDb() {
     clearTimeout(to); if (S.mode !== 'online') { S.mode = 'online'; setSync(); setTimeout(reenviarPendentes, 500); }
     snap.docs.forEach(d => { const v = d.data(); if (!v) return; const loc = S.resp[d.id];
       if (loc && loc.status === 'enviada' && v.status !== 'enviada') { subirEnvio(d.id); return; }
+      if (v.oculto) { delete S.dirty[d.id]; S.resp[d.id] = JSON.parse(JSON.stringify(v)); LS.set('r:' + d.id, S.resp[d.id]); return; }
       if (S.dirty[d.id] && loc && (loc.atualizadoEm || 0) > (v.atualizadoEm || 0)) return;
       if (loc && (loc.atualizadoEm || 0) > (v.atualizadoEm || 0)) { queueSave(d.id); return; }
       S.resp[d.id] = JSON.parse(JSON.stringify(v)); LS.set('r:' + d.id, S.resp[d.id]); });
@@ -741,7 +742,7 @@ function route() {
   const h = (location.hash || '').slice(1);
   const gm = GRUPOS.find(g => h === g.id || h === 'g-' + g.id || h.startsWith(g.id + '-'));
   if (h.startsWith('acesso=')) { const c = decodeURIComponent(h.slice(7)); history.replaceState(null, '', location.pathname); const [ev, m] = c.split('/'); if (m) { S.pendingMesa = m.toLowerCase(); } entrar(ev); return; }
-  if (gm && SUPA && !PANEL(S.role)) { selectMesa(gm.id, h.slice(gm.id.length + 1)); return; }
+  if (gm && SUPA && !PANEL(S.role)) { if (!S.role) { S.screen = 'login'; render(); return; } if (gm.id !== S.role) { toast('Este aparelho está conectado à ' + G[S.role].papel + '.'); history.replaceState(null, '', location.pathname + '#' + S.role); return; } }
   if (gm) { S.role = gm.id; LS.set('role', gm.id); S.screen = 'auto'; const st = h.slice(gm.id.length + 1); if (E[st] && E[st].tipo !== 'pausa') { S.view = st; S.dayView = E[st].dia; } else { S.view = null; S.dayView = null; } render(); scrollTo(0, 0); return; }
   if (h === 'mapa') S.screen = 'mapa';
   else if (h === 'avaliacao') { S.screen = 'avaliacao'; S.avalSent = false; }
@@ -765,7 +766,7 @@ function render() {
   if (!S.role) { who.innerHTML = nav; app.innerHTML = homeHTML(); return; }
   if (PANEL(S.role)) { document.documentElement.style.setProperty('--g', 'var(--forest)'); who.innerHTML = nav + ` <button class="chip" id="trocar">${S.role === 'unodc' ? 'UNODC' : 'Equipe de facilitação'} · sair</button>`; app.innerHTML = panelHTML(); afterPanel(); return; }
   const g = G[S.role]; document.documentElement.style.setProperty('--g', g.cor);
-  who.innerHTML = nav + ` <button class="chip" id="trocar" title="Trocar de mesa"><span class="dot"></span>${esc(g.papel)} · trocar</button>`;
+  who.innerHTML = nav + ` <button class="chip" id="trocar" title="Sair desta mesa"><span class="dot"></span>${esc(g.papel)} · sair</button>`;
   app.innerHTML = tabletHTML(g); tick();
 }
 function softRender() {
@@ -843,11 +844,14 @@ function stageHead(e, g) {
       <div class="timer" data-timer="${e.id}"><div class="row"><span class="big"></span><span class="sub muted"></span></div><div class="bar"><i></i></div></div>
     </div>`;
 }
-const isOpen = (e) => DEMO || e.id === activeStage().id;
+const isOpen = (e) => true;
 function stageHTML(e, g, act) {
   const order = WORK.findIndex(x => x.id === e.id), actOrder = WORK.findIndex(x => x.id === act.id);
   const doc = getDoc(e.id, g.id);
-  if (!isOpen(e) || (DEMO && doc.status === 'enviada' && false)) {
+  if (doc.status === 'enviada' && !PANEL(S.role)) {
+    return `<article class="stage"><div class="pausebox"><h2>${esc(e.exNome || e.sessao)}</h2><p>Enviado às <b>${hhmm(doc.enviadoEm)}</b>. O registro foi entregue à equipe de facilitação e, por segurança, não fica mais visível nem editável neste aparelho.</p><button class="btn" data-go="${act.id}">Ir para o exercício atual</button></div></article>`;
+  }
+  if (!isOpen(e)) {
     const msg = doc.status === 'enviada' ? `<h2>${esc(e.exNome || e.sessao)}</h2><p>Enviado às <b>${hhmm(doc.enviadoEm)}</b>. Depois do envio não é possível voltar nem editar.</p>`
       : order > actOrder ? `<h2>${esc(e.exNome || e.sessao)}</h2><p>Ainda não liberado. A equipe libera cada exercício no horário da programação: <b>${hm(e.ini)}–${hm(e.fim)}</b>.</p>`
       : `<h2>${esc(e.exNome || e.sessao)}</h2><p>Etapa encerrada.</p>`;
@@ -859,7 +863,7 @@ function stageHTML(e, g, act) {
     ${e.ex && !sent ? `<div class="quando"><b>Quando:</b> ${esc(e.quando)}</div>` : ''}
     <div class="stage-body">
       ${e.ex && !sent ? `<div class="pede"><span class="eyebrow">O que este exercício pede</span><p class="pede-t">${esc(e.pede)}</p><p class="pede-e"><b>O grupo entrega:</b> ${esc(e.entrega)}</p></div>` : ''}
-      ${e.tipo === 'grupo' && !sent ? `<div class="rodada"><div><b>Rodada de 1 minuto</b><span class="muted" style="display:block;font-size:13.5px">Cada pessoa fala uma vez. Toque para iniciar o tempo de quem vai falar.</span></div><span class="rt mono" id="rt">1:00</span><button class="btn" data-rodada="1" id="rtbtn">Iniciar</button></div>` : ''}
+      ${e.tipo === 'grupo' && !sent ? `<div class="rodada"><div><b>Rodada de 1 minuto</b><span class="muted" style="display:block;font-size:13.5px">Cada estado ou instituição fala uma vez. Toque para iniciar o tempo de quem vai falar.</span></div><span class="rt mono" id="rt">1:00</span><button class="btn" data-rodada="1" id="rtbtn">Iniciar</button></div>` : ''}
       ${sent ? `<div class="sentbox"><span class="ok-ic" aria-hidden="true">✓</span><div><h3>${esc(e.exNome)} enviado às ${hhmm(doc.enviadoEm)}</h3><p>As respostas do ${esc(g.nome)} foram registradas. Aguarde a equipe liberar o próximo exercício.</p></div></div>` : ''}
       <div class="two">
         <div class="box"><h3>O que o grupo faz</h3><p>${esc(fill(e.papel, g))}</p>
@@ -1066,7 +1070,7 @@ document.addEventListener('click', async ev => {
   if (b.id === 'aval-enviar') { await enviarAval(); return; }
   if (b.id === 'aval-proxima') { S.aval = {}; S.avalSent = false; render(); scrollTo(0, 0); return; }
   if (b.dataset.val && b.closest('.form[data-aval]')) { setPath(S.aval, b.dataset.k, Number(b.dataset.val)); const y = scrollY; render(); scrollTo(0, y); return; }
-  if (b.id === 'trocar') { if (SUPA && !PANEL(S.role)) { leaveMesa(); return; } if (b.dataset.armed) { S.role = null; LS.del('role'); if (SUPA) { LS.del('codigo'); location.reload(); return; } render(); return; } b.dataset.armed = '1'; b.textContent = 'Tocar de novo para trocar'; setTimeout(() => render(), 3000); return; }
+  if (b.id === 'trocar') { if (SUPA && !PANEL(S.role)) { if (!b.dataset.armed) { b.dataset.armed = '1'; b.textContent = 'Toque de novo para sair'; setTimeout(() => { delete b.dataset.armed; softRender(); }, 3500); return; } leaveMesa(); return; } if (b.dataset.armed) { S.role = null; LS.del('role'); if (SUPA) { LS.del('codigo'); location.reload(); return; } render(); return; } b.dataset.armed = '1'; b.textContent = 'Tocar de novo para trocar'; setTimeout(() => render(), 3000); return; }
   if (b.dataset.day) { S.dayView = Number(b.dataset.day); $('.rail').innerHTML = railHTML(G[S.role]); return; }
   if (b.dataset.go) { S.view = b.dataset.go; S.dayView = E[b.dataset.go].dia; render(); scrollTo(0, 0); return; }
   if (b.dataset.val && b.closest('.form[data-doc]')) { const form = b.closest('.form'); editDoc(form, d => setPath(d, b.dataset.k, Number(b.dataset.val))); rerenderStage(); return; }
@@ -1281,7 +1285,7 @@ function importar() {
 
 // ---------- início ----------
 setSync(); route(); connect();
-setInterval(() => { tick(); if (!DEMO && S.ativaAuto && S.role && !PANEL(S.role)) { const a = activeStage(); const cur = document.querySelector('.tl li.ativa button')?.dataset.go; if (cur && cur !== a.id && !document.activeElement?.matches?.('input,textarea')) { S.view = null; render(); } } }, 15000);
+setInterval(() => { tick(); if (!DEMO && S.ativaAuto && S.role && !PANEL(S.role) && !S.view) { const a = activeStage(); const cur = document.querySelector('.tl li.ativa button')?.dataset.go; if (cur && cur !== a.id && !document.activeElement?.matches?.('input,textarea')) { S.view = null; render(); } } }, 15000);
 setInterval(() => { const el = $('#clock'); const d = new Date(); el.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`; }, 5000);
 // wake lock para o tablet não apagar
 (async () => { try { await navigator.wakeLock?.request('screen'); } catch {} })();
