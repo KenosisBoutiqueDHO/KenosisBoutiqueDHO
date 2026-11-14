@@ -512,10 +512,7 @@
   const temaTxt = (g) => g && g.tema ? `Tema ${g.tema} · ${g.temaNome}` : 'Tema do grupo';
   const P = (id) => ETAPAS.find(e => e.id === id);
 
-  // Dia 1 · Missão de Belém: somente apresentação
-  Object.assign(P('d1-belem'), { campos: [], papel: 'Ouvir a apresentação. Não há exercício nesta sessão.',
-    passos: [{ min: 40, txt: 'Apresentação conjunta SEMAS/PA e INPE. Os grupos acompanham.' }] });
-  // Dia 1 · Estados bloco 1: Exercício 1, registrado pela UNODC com INPE e SEMAS/PA
+  // Dia 1 · Estados bloco 1: registrado pela UNODC com INPE e SEMAS/PA
   Object.assign(P('d1-estados1'), { resp: 'unodc', papel: 'Exercício registrado pela UNODC, com o INPE e a SEMAS/PA, durante as apresentações. Os grupos acompanham as apresentações e o Termômetro de Convergência.',
     passos: [{ min: 100, txt: 'Apresentações de 5 estados, 20 minutos cada. A UNODC, com o INPE e a SEMAS/PA, preenche um quadro por estado. Termômetro de Convergência ao fim de cada estado (cartões verde, amarelo e vermelho).' }, { min: 20, txt: 'Perguntas e discussões. A UNODC registra os pontos principais e envia.' }] });
   P('d1-estados1').campos = [P('d1-estados1').campos[0], { k: 'discussao', t: 'area', l: 'Perguntas e discussões: pontos principais', rows: 4 }];
@@ -532,11 +529,11 @@
   Object.assign(gt, { conteudo: 'Divisão em grupos para discutir os temas: Dados e Metodologias; Sistemas e Interoperabilidade; Uso Operacional; Cooperação Institucional; Capacitação.',
     papel: 'Cada grupo discute o seu tema. Com 10 grupos, cada tema tem dois grupos, e as respostas dos dois compõem a base do mesmo tema.',
     passos: [{ min: 5, txt: 'Escolher o líder e ler as perguntas do tema do grupo.' }, { min: 45, txt: 'Rodada com uma fala de até 1 minuto por estado ou instituição presente, orientada pelas perguntas do tema. O grupo escolhe até 3 demandas e o líder registra.' }, { min: 15, txt: 'Marcar a prioridade das demandas, escrever as perguntas para o Dia 2, ler em voz alta e entregar.' }] });
-  const demF = gt.campos[0].f;
+  const demF = gt.campos[0].f; const gtResto = gt.campos.filter(f => f.k !== 'demandas');
   gt.camposDe = (g) => [
     { k: 'tema', t: 'guia', l: temaTxt(g), h: 'Perguntas para orientar a rodada', o: g && g.tema ? G5[g.tema - 1] : ['Use as perguntas do tema do grupo.'] },
     { k: 'demandas', t: 'repeat', n: 3, item: 'Demanda', f: demF },
-    ...gt.campos.filter(f => f.k !== 'demandas')];
+    ...gtResto];
   // Dia 2 · Apresentações: BIG/BDC, Biomas-BR, Queimadas, Sala de Situação e UFMG (18 min cada)
   const apr = [['d2-bdc', 'INPE · BIG/BDC (Brazil Data Cube)', 'INPE'], ['d2-biomas', 'INPE · Biomas-BR', 'INPE'], ['d2-queimadas', 'INPE · Programa Queimadas', 'INPE'], ['d2-sala', 'INPE · Sala de Situação', 'INPE'], ['d2-ufmg', 'UFMG', 'UFMG']];
   if (!P('d2-ufmg')) ETAPAS.push({ ...P('d2-sala'), id: 'd2-ufmg', campos: P('d2-sala').campos.map(f => ({ ...f })), conteudo: 'Apresentação da UFMG sobre soluções, produtos e pesquisas aplicáveis ao monitoramento e à gestão do fogo pelos estados.', resultado: 'Contribuições da UFMG relacionadas às demandas regionais.' });
@@ -580,6 +577,7 @@
     'd2-ufmg': ['O que a UFMG oferece aos estados', 'Condições de acesso e uso', 'Qual demanda do Dia 1 pode ser atendida'],
     'd2-clinicas': ['A clínica trata as demandas que se encaixam na sua categoria', 'Use o levantamento prévio e o que foi apresentado no Dia 2 como referência', 'Registre a lacuna e a trilha de interoperabilidade de cada demanda'],
     'd3-priorizacao': ['Aplique os 6 critérios antes de escolher as prioridades', 'O quê: começa com verbo e gera um produto concreto', 'Quem: uma instituição responsável, não uma pessoa'] });
+  P('d2-painel').campos = P('d2-painel').campos.map(f => ({ ...f, rows: 2 }));
   Object.assign(PEDE, { 'd1-estados1': ['Para cada um dos 5 estados: programas, linhas de ação, ferramentas, integração, desafio, prática e demanda. Registro feito pela UNODC, com o INPE e a SEMAS/PA.', '5 quadros de estado e os pontos da discussão'],
     'd1-estados2': ['Para cada um dos 4 estados: o mesmo quadro, a partir do tema do grupo. O quinto quadro fica reservado para o Piauí ou outro estado, se houver mais uma apresentação.', 'Quadros de estado e o que é comum'],
     'd1-grupos': ['Discutir o tema do grupo e registrar até 3 demandas, com desafio, para quem, quem pode atender e prioridade.', 'Até 3 demandas do tema e as perguntas para o Dia 2'],
@@ -1358,7 +1356,7 @@ async function liberar(id) {
   render();
 }
 function panelHTML() {
-  const tabs = S.role === 'unodc' ? [['ex1', 'Exercício 1 · Estados'], ['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações']]
+  const tabs = S.role === 'unodc' ? [['ex1', E['d1-estados1'].exNome.replace(' · bloco 1', '')], ['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações']]
     : [['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['seguranca', 'Segurança' + ((S.alertas || []).length ? ` (${S.alertas.length})` : '')], ['exportar', 'Exportar e importar']];
   if (S.role === 'unodc' && S.tabIni !== 'unodc') { S.tab = 'ex1'; S.tabIni = 'unodc'; }
   if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
