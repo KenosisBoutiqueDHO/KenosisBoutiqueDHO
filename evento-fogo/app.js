@@ -504,7 +504,7 @@
   const NGR = 10;
   GRUPOS.length = 0;
   for (let i = 0; i < NGR; i++) {
-    const n = i + 1, tm = (i % 5) + 1, cl = (i % 6) + 1;
+    const n = i + 1, tm = [1, 2, 3, 4, 5, 5, 1, 2, 3, 4][i], cl = [1, 2, 3, 4, 5, 6, 1, 2, 3, 4][i];
     GRUPOS.push({ id: 'mesa' + String(n).padStart(2, '0'), num: n, papel: `Grupo ${n}`, nome: `Grupo ${n} · ${TEMAS5[tm - 1]}`, tema: tm, temaNome: TEMAS5[tm - 1],
       clinica: cl, clinicaNome: CLINICAS[cl - 1].nome, cor: TEMA_COR[tm - 1], corNome: '', base: '', mesa: String(n), eixo: TEMAS5[tm - 1] });
   }
@@ -521,9 +521,10 @@
     conteudo: 'Dinâmica de grupo com barbantes coloridos para evidenciar as conexões entre participantes, estados e instituições.',
     resultado: 'Conexões entre participantes, estados e instituições evidenciadas.', papel: 'Participar da dinâmica conduzida pela facilitação. Não há registro nesta sessão.',
     passos: [{ min: 15, txt: 'Dinâmica do barbante colorido, conduzida pela facilitação.' }], campos: [] });
-  Object.assign(P('d1-estados2'), { ini: '13:45', fim: '15:10', conteudo: 'Apresentações de 4 estados (20 minutos por estado) + 5 minutos de perguntas e discussões.',
-    papel: 'Cada grupo registra as apresentações do bloco 2 a partir do seu tema.',
-    passos: [{ min: 80, txt: 'Ouvir as quatro apresentações, 20 minutos cada. O líder preenche um quadro por estado. Termômetro ao fim de cada estado.' }, { min: 5, txt: 'Perguntas e discussões. O líder revisa o registro e entrega.' }] });
+  Object.assign(P('d1-estados2'), { ini: '13:45', fim: '15:10', resp: 'unodc', conteudo: 'Apresentações de 4 estados (20 minutos por estado) + 5 minutos de perguntas e discussões.',
+    papel: 'Exercício registrado pela UNODC, com o INPE e a SEMAS/PA, durante as apresentações. Os grupos acompanham as apresentações e o Termômetro de Convergência.',
+    passos: [{ min: 80, txt: 'Apresentações de 4 estados, 20 minutos cada. A UNODC, com o INPE e a SEMAS/PA, preenche um quadro por estado; o quinto quadro fica reservado para o Piauí ou outro estado. Termômetro de Convergência ao fim de cada estado.' }, { min: 5, txt: 'Perguntas e discussões. A UNODC registra os pontos principais e envia.' }] });
+  P('d1-estados2').campos = [P('d1-estados2').campos[0], { k: 'comuns', t: 'area', l: 'Pontos comuns aos estados dos dois blocos', rows: 3 }, { k: 'discussao', t: 'area', l: 'Perguntas e discussões: pontos principais', rows: 3 }];
   // Dia 1 · Grupos temáticos: cada grupo discute o seu tema
   const gt = P('d1-grupos');
   Object.assign(gt, { conteudo: 'Divisão em grupos para discutir os temas: Dados e Metodologias; Sistemas e Interoperabilidade; Uso Operacional; Cooperação Institucional; Capacitação.',
@@ -578,8 +579,8 @@
     'd2-clinicas': ['A clínica trata as demandas que se encaixam na sua categoria', 'Use o levantamento prévio e o que foi apresentado no Dia 2 como referência', 'Registre a lacuna e a trilha de interoperabilidade de cada demanda'],
     'd3-priorizacao': ['Aplique os 6 critérios antes de escolher as prioridades', 'O quê: começa com verbo e gera um produto concreto', 'Quem: uma instituição responsável, não uma pessoa'] });
   P('d2-painel').campos = P('d2-painel').campos.map(f => ({ ...f, rows: 2 }));
-  Object.assign(PEDE, { 'd1-estados1': ['Para cada um dos 5 estados: programas, linhas de ação, ferramentas, integração, desafio, prática e demanda. Registro feito pela UNODC, com o INPE e a SEMAS/PA.', '5 quadros de estado e os pontos da discussão'],
-    'd1-estados2': ['Para cada um dos 4 estados: o mesmo quadro, a partir do tema do grupo. O quinto quadro fica reservado para o Piauí ou outro estado, se houver mais uma apresentação.', 'Quadros de estado e o que é comum'],
+  Object.assign(PEDE, { 'd1-estados1': ['Para cada um dos 5 estados: programas, linhas de ação, ferramentas, integração, desafio, prática e demanda. Registro feito pela UNODC, com o INPE e a SEMAS/PA. Os demais estados, incluindo o Piauí, são registrados no bloco 2.', '5 quadros de estado e os pontos da discussão'],
+    'd1-estados2': ['Para cada um dos 4 estados: o mesmo quadro do bloco 1. O quinto quadro fica reservado para o Piauí ou outro estado. Registro feito pela UNODC, com o INPE e a SEMAS/PA.', '4 ou 5 quadros de estado, pontos comuns e pontos da discussão'],
     'd1-grupos': ['Discutir o tema do grupo e registrar até 3 demandas, com desafio, para quem, quem pode atender e prioridade.', 'Até 3 demandas do tema e as perguntas para o Dia 2'],
     'd2-ufmg': ['Registrar o que a solução apresentada serve para os estados e o que ainda falta.', 'O que serve, o que falta e 1 pergunta'],
     'd2-clinicas': ['Identificar as demandas da categoria da clínica e preencher a matriz demanda–solução–lacuna, com trilha de interoperabilidade.', 'Matriz da clínica'],
@@ -663,6 +664,9 @@ function activeStage() { const a = S.ativa && E[S.ativa] ? E[S.ativa] : (clockSt
 function tick() {
   const d = new Date(); $('#clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   document.querySelectorAll('[data-timer]').forEach(el => paintTimer(el, E[el.dataset.timer]));
+  const mk = d.getHours() * 60 + d.getMinutes();
+  if (S.agMin == null) S.agMin = mk;
+  if (mk !== S.agMin) { S.agMin = mk; if ((S.screen === 'agenda' || (PANEL(S.role) && S.tab === 'agenda')) && !document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; setTimeout(() => { render(); scrollTo(0, y); }, 0); } }
 }
 function paintTimer(el, e) {
   if (!e) return;
@@ -843,7 +847,7 @@ function attachDb() {
   S.db.collection('avaliacoes').onSnapshot(s => { S.avals = s.docs.map(d => d.data()).filter(Boolean); if (PANEL(S.role) && S.tab === 'avaliacoes' && S.screen === 'auto') render(); }, () => {});
   // envia avaliações guardadas sem conexão
   setTimeout(async () => { const loc = LS.get('avals', []); let ch = false; for (const a of loc) { if (!a.sync && S.mode === 'online') { try { const { sync, ...rec } = a; await S.db.collection('avaliacoes').add(rec); a.sync = true; ch = true; } catch {} } } if (ch) LS.set('avals', loc); }, 4000);
-  S.db.collection('participantes').onSnapshot((parts, mesa) => { if (parts) { S.parts = parts; if (PANEL(S.role) && S.tab === 'credenciamento' && S.screen === 'auto' && !document.activeElement?.closest?.('#tabbody input, #tabbody select, #tabbody textarea')) { const tb = $('#tabbody'); if (tb) { const y = scrollY; tb.innerHTML = credHTML(); scrollTo(0, y); } } } if (mesa) { const ch = JSON.stringify(mesa) !== JSON.stringify(S.mesaParts || []); S.mesaParts = mesa; if (ch && !PANEL(S.role) && S.screen === 'auto' && !document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; render(); scrollTo(0, y); } } }, () => {});
+  S.db.collection('participantes').onSnapshot((parts, mesa) => { if (parts) { S.parts = [...parts].sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt', { sensitivity: 'base' })); if (PANEL(S.role) && S.tab === 'credenciamento' && S.screen === 'auto' && !document.activeElement?.closest?.('#tabbody input, #tabbody select, #tabbody textarea')) { const tb = $('#tabbody'); if (tb) { const y = scrollY; tb.innerHTML = credHTML(); scrollTo(0, y); } } } if (mesa) { const ch = JSON.stringify(mesa) !== JSON.stringify(S.mesaParts || []); S.mesaParts = mesa; if (ch && !PANEL(S.role) && S.screen === 'auto' && !document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; render(); scrollTo(0, y); } } }, () => {});
   S.db.collection('termometro').onSnapshot(s => { s.docs.forEach(d => S.termo[d.id] = d.data()); if (PANEL(S.role) && S.tab === 'termometro' && !document.activeElement?.closest?.('.termo')) render(); }, () => {});
 }
 function loadLocal() {
@@ -921,6 +925,7 @@ function route() {
   if (gm) { S.role = gm.id; LS.set('role', gm.id); S.screen = 'auto'; const st = h.slice(gm.id.length + 1); if (E[st] && E[st].tipo !== 'pausa') { S.view = st; S.dayView = E[st].dia; } else { S.view = null; S.dayView = null; } render(); scrollTo(0, 0); return; }
   if (h === 'bastidores') { history.replaceState(null, '', location.pathname); S.loginEquipe = true; S.screen = 'login'; render(); scrollTo(0, 0); return; }
   if (h === 'mapa') S.screen = 'mapa';
+  else if (h === 'agenda') S.screen = 'agenda';
   else if (h === 'avaliacao') { S.screen = 'avaliacao'; S.avalSent = false; }
   else if (E[h] && E[h].tipo !== 'pausa') { S.screen = 'auto'; if (S.role && !PANEL(S.role)) { S.view = h; S.dayView = E[h].dia; } else if (!S.role) S.pendingStage = h; else { S.respStage = h; S.tab = 'respostas'; } }
   else S.screen = (SUPA && !LS.get('evento', null) && !LS.get('codigo', null)) || S.loginEquipe ? 'login' : 'auto';
@@ -936,8 +941,9 @@ function render() { renderCore(); const app = $('#app'); if (app && !PANEL(S.rol
 function renderCore() {
   const app = $('#app');
   const who = $('#who');
-  const nav = `<a class="navbtn" href="#mapa">Mapa do encontro</a>`;
+  const nav = `<a class="navbtn" href="#agenda">Agenda</a>`;
   if (S.screen === 'login') { who.innerHTML = ''; app.innerHTML = loginHTML(); return; }
+  if (S.screen === 'agenda') { who.innerHTML = `<a class="navbtn" href="#">Voltar</a>`; app.innerHTML = agendaHTML(false); return; }
   if (S.screen === 'mapa') { who.innerHTML = (S.role ? `<a class="navbtn" href="#">Voltar</a>` : `<a class="navbtn" href="#">Início</a>`); app.innerHTML = mapaHTML(); return; }
   if (S.screen === 'avaliacao') { who.innerHTML = `<a class="navbtn" href="#">Sair da avaliação</a>`; app.innerHTML = avaliacaoHTML(); return; }
   if (!S.role) { who.innerHTML = nav; app.innerHTML = homeHTML(); return; }
@@ -1275,6 +1281,7 @@ document.addEventListener('click', async ev => {
   if (b.dataset.confirmar) { b.disabled = true; await enviarExercicio(b.dataset.confirmar); return; }
   // painel
   if (b.id === 'geo-tentar') { b.disabled = true; b.textContent = 'Conferindo a localização…'; GEO.pos = null; GEO.err = null; GEO.pedido = true; await geoObter(); const c = S.codePend || LS.get('codigo', null); S.bloqueio = null; if (c) { await entrar(c); } else { S.screen = 'login'; render(); } return; }
+  if (b.dataset.unodcex) { S.unodcEx = b.dataset.unodcex; render(); return; }
   if (b.dataset.cerca) { try { await rpc('ef_cerca', { p_codigo: LS.get('codigo', null), p_modo: b.dataset.cerca }); S.cerca = { ...(S.cerca || {}), modo: b.dataset.cerca }; toast(b.dataset.cerca === 'desligada' ? 'Verificação de local desligada' : b.dataset.cerca === 'ligada' ? 'Verificação de local ligada agora' : 'Verificação de local automática nos dias do encontro'); } catch { toast('Não foi possível alterar agora. Verifique a conexão.'); } render(); return; }
   if (b.dataset.tab) { S.tab = b.dataset.tab; LS.set('tab', S.tab); render(); return; }
   if (b.dataset.liberar) { await liberar(b.dataset.liberar); return; }
@@ -1356,8 +1363,8 @@ async function liberar(id) {
   render();
 }
 function panelHTML() {
-  const tabs = S.role === 'unodc' ? [['ex1', E['d1-estados1'].exNome.replace(' · bloco 1', '')], ['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações']]
-    : [['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['seguranca', 'Segurança' + ((S.alertas || []).length ? ` (${S.alertas.length})` : '')], ['exportar', 'Exportar e importar']];
+  const tabs = S.role === 'unodc' ? [['ex1', 'Estados (registro da UNODC)'], ['agenda', 'Agenda'], ['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações']]
+    : [['conducao', 'Condução'], ['agenda', 'Agenda'], ['credenciamento', 'Credenciamento'], ['mapa', 'Mapa e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['seguranca', 'Segurança' + ((S.alertas || []).length ? ` (${S.alertas.length})` : '')], ['exportar', 'Exportar e importar']];
   if (S.role === 'unodc' && S.tabIni !== 'unodc') { S.tab = 'ex1'; S.tabIni = 'unodc'; }
   if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
   return `<div class="wrap"><div class="panel ${S.role === 'unodc' ? 'ro' : ''}">
@@ -1365,13 +1372,36 @@ function panelHTML() {
     ${S.mode === 'local' ? `<div class="banner">Modo local: este aparelho não está sincronizando. Os celulares seguem o próprio relógio e guardam as respostas. Ao final, importe o arquivo de cada tablet na aba Exportar e importar.</div>` : ''}
     ${S.role === 'equipe' && (S.alertas || []).some(a => a.tipo === 'fora_da_area') && S.tab !== 'seguranca' ? `<div class="banner" style="border-color:#B3261E;background:#fbeceb"><b>Atenção:</b> houve tentativa de acesso de fora do INPE com o QR Code de: ${[...new Set(S.alertas.filter(a => a.tipo === 'fora_da_area').map(a => G[a.mesa]?.papel || a.mesa))].map(esc).join(', ')}. <button class="btn small" data-tab="seguranca">Ver detalhes</button></div>` : ''}
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}">${l}</button>`).join('')}</div>
-    <div id="tabbody">${({ mapa: () => mapaHTML().replace('class="wrap"', 'class=""'), ex1: ex1HTML, conducao: conducaoHTML, credenciamento: credHTML, respostas: respostasHTML, matriz: matrizHTML, perguntas: perguntasHTML, termometro: termoHTML, avaliacoes: avaliacoesHTML, seguranca: segHTML, exportar: exportHTML })[S.tab]()}</div>
+    <div id="tabbody">${({ mapa: () => mapaHTML().replace('class="wrap"', 'class=""'), ex1: ex1HTML, agenda: () => agendaHTML(true), conducao: conducaoHTML, credenciamento: credHTML, respostas: respostasHTML, matriz: matrizHTML, perguntas: perguntasHTML, termometro: termoHTML, avaliacoes: avaliacoesHTML, seguranca: segHTML, exportar: exportHTML })[S.tab]()}</div>
   </div></div>`;
 }
 function afterPanel() { tick(); }
-function ex1HTML() { const e = E['d1-estados1']; const d = S.resp[docId(e.id, 'unodc')];
-  if (d && d.status === 'enviada') return `<div class="sentbox"><span class="ok-ic" aria-hidden="true">✓</span><div><h3>${esc(e.exNome)} enviado às ${hhmm(d.enviadoEm)}</h3><p>O registro da UNODC, com o INPE e a SEMAS/PA, foi entregue. Ele aparece na aba Respostas por etapa.</p></div></div>`;
-  return stageHTML(e, G.unodc, e); }
+function ex1HTML() {
+  const ids = ETAPAS.filter(e => e.resp === 'unodc').map(e => e.id); if (!S.unodcEx || !ids.includes(S.unodcEx)) S.unodcEx = ids[0];
+  const e = E[S.unodcEx]; const d = S.resp[docId(e.id, 'unodc')];
+  const sel = `<div class="seg3" role="group" aria-label="Bloco" style="margin-bottom:12px">${ids.map(id => `<button data-unodcex="${id}" aria-pressed="${id === S.unodcEx}">${esc(E[id].sessao)}${S.resp[docId(id, 'unodc')]?.status === 'enviada' ? ' ✓' : ''}</button>`).join('')}</div>`;
+  if (d && d.status === 'enviada') return sel + `<div class="sentbox"><span class="ok-ic" aria-hidden="true">✓</span><div><h3>${esc(e.exNome)} enviado às ${hhmm(d.enviadoEm)}</h3><p>O registro da UNODC, com o INPE e a SEMAS/PA, foi entregue. Ele aparece na aba Respostas por etapa.</p></div></div>`;
+  return sel + stageHTML(e, G.unodc, e); }
+function etapaStatus(e) {
+  if (S.ativa && E[S.ativa]) { const ia = ETAPAS.indexOf(E[S.ativa]), i = ETAPAS.indexOf(e); return i < ia ? 'feito' : i === ia ? 'agora' : 'prox'; }
+  const t = Date.now(), dt = DIAS[e.dia - 1].data, ini = Date.parse(`${dt}T${e.ini}:00-03:00`), fim = Date.parse(`${dt}T${e.fim}:00-03:00`);
+  return t >= fim ? 'feito' : t >= ini ? 'agora' : 'prox';
+}
+function agendaHTML(inPanel) {
+  const its = ETAPAS.filter(e => e.tipo !== 'pausa'); const feitos = its.filter(e => etapaStatus(e) === 'feito').length; const pct = Math.round(feitos / its.length * 100);
+  const atual = its.find(e => etapaStatus(e) === 'agora');
+  const ic = (s) => s === 'feito' ? '<span class="stt ok" title="Realizado" aria-label="Realizado">✓</span>' : s === 'agora' ? '<span class="stt now" title="Em atividade" aria-label="Em atividade"></span>' : '<span class="stt nx" title="A seguir" aria-label="A seguir"></span>';
+  const lb = { feito: 'Realizado', agora: 'Em atividade', prox: '' };
+  return `<div class="${inPanel ? '' : 'wrap'}" style="${inPanel ? '' : 'padding-top:18px;padding-bottom:30px'}"><div style="display:grid;gap:16px">
+    ${inPanel ? '' : `<div><span class="eyebrow">Agenda do encontro</span><h1 style="font-size:clamp(24px,3.4vw,34px);margin-top:4px">Programação e andamento</h1></div>`}
+    <div class="termoand"><div class="row2"><b>Termômetro do encontro</b><span>${feitos} de ${its.length} atividades realizadas · ${pct}%</span></div><div class="tbar"><i style="width:${pct}%"></i></div>
+      <div class="leg">${ic('agora')} Em atividade ${ic('feito')} Realizado ${ic('prox')} A seguir</div>${atual ? `<p style="margin:6px 0 0">Agora: <b>${esc(atual.sessao)}</b> (${hm(atual.ini)}–${hm(atual.fim)})</p>` : ''}</div>
+    ${DIAS.map(d => { const di = its.filter(e => e.dia === d.n); const fd = di.filter(e => etapaStatus(e) === 'feito').length;
+      return `<section class="agday"><div class="dayhead"><h2>${esc(d.rotulo)}</h2><span class="muted">${esc(d.eixo)}</span></div><div class="tbar sm"><i style="width:${Math.round(fd / di.length * 100)}%"></i></div>
+      <ol class="agl">${ETAPAS.filter(e => e.dia === d.n).map(e => { if (e.tipo === 'pausa') return `<li class="pz"><span></span><span class="mono">${hm(e.ini)}–${hm(e.fim)}</span><span>${esc(e.sessao)}</span><span></span></li>`;
+        const s = etapaStatus(e); return `<li class="${s}">${ic(s)}<span class="mono">${hm(e.ini)}–${hm(e.fim)}</span><span><b>${esc(e.sessao)}</b><small>${esc(e.quem || '')}${e.ex ? ' · ' + esc(e.exNome.split(' · ')[0]) : ''}${e.resp === 'unodc' ? ' (registro da UNODC)' : ''}</small></span><span class="lbx">${lb[s]}</span></li>`; }).join('')}</ol></section>`; }).join('')}
+  </div></div>`;
+}
 function segHTML() {
   const c = S.cerca || { modo: 'auto' }; const modo = c.modo || 'auto'; const now = Date.now();
   const ativa = modo === 'ligada' || (modo === 'auto' && now >= Date.parse('2026-11-16T00:00:00-03:00') && now < Date.parse('2026-11-19T00:00:00-03:00'));
