@@ -1782,8 +1782,10 @@ module.exports = QRRSBlock;
 
   // Dia 1 · Estados bloco 1: registrado pela UNODC com INPE e SEMAS/PA
   Object.assign(P('d1-estados1'), { resp: 'unodc', papel: 'Exercício registrado pela UNODC, com o INPE e a SEMAS/PA, durante as apresentações. Os grupos acompanham as apresentações e o Termômetro de Convergência.',
-    passos: [{ min: 100, txt: 'Apresentações de 5 estados, 20 minutos cada. A UNODC, com o INPE e a SEMAS/PA, preenche um quadro por estado. Termômetro de Convergência ao fim de cada estado (cartões verde, amarelo e vermelho).' }, { min: 20, txt: 'Perguntas e discussões. A UNODC registra os pontos principais e envia.' }] });
-  P('d1-estados1').campos = [P('d1-estados1').campos[0], { k: 'discussao', t: 'area', l: 'Perguntas e discussões: pontos principais', rows: 4 }];
+    passos: [{ min: 100, txt: 'Apresentações dos estados do bloco 1, 20 minutos cada. A UNODC, com o INPE e a SEMAS/PA, preenche o quadro de cada estado que se apresenta. Termômetro de Convergência ao fim de cada estado (cartões nas cores de semáforo).' }, { min: 20, txt: 'Perguntas e discussões. A UNODC registra os pontos principais e envia.' }] });
+  const QUADROS = (bloco) => ({ k: 'estados', t: 'repeat', n: UFS.length, item: 'Estado', titles: UFS, f: ESTADO_F.filter(x => x.k !== 'uf'),
+    h: `Um quadro por estado: os 9 estados da Amazônia Legal e o Piauí. Preencha os estados que se apresentam no bloco ${bloco}.` });
+  P('d1-estados1').campos = [QUADROS(1), { k: 'discussao', t: 'area', l: 'Perguntas e discussões: pontos principais', rows: 4 }];
   // Dia 1 · Dinâmica do barbante (13h30–13h45) e bloco 2 dos Estados (13h45–15h10)
   ETAPAS.push({ id: 'd1-barbante', dia: 1, ini: '13:30', fim: '13:45', sessao: 'Dinâmica do barbante colorido', tipo: 'plenaria', quem: 'Facilitação',
     conteudo: 'Dinâmica de grupo com barbantes coloridos para evidenciar as conexões entre participantes, estados e instituições.',
@@ -1791,8 +1793,8 @@ module.exports = QRRSBlock;
     passos: [{ min: 15, txt: 'Dinâmica do barbante colorido, conduzida pela facilitação.' }], campos: [] });
   Object.assign(P('d1-estados2'), { ini: '13:45', fim: '15:10', resp: 'unodc', conteudo: 'Apresentações de 4 estados (20 minutos por estado) + 5 minutos de perguntas e discussões.',
     papel: 'Exercício registrado pela UNODC, com o INPE e a SEMAS/PA, durante as apresentações. Os grupos acompanham as apresentações e o Termômetro de Convergência.',
-    passos: [{ min: 80, txt: 'Apresentações de 4 estados, 20 minutos cada. A UNODC, com o INPE e a SEMAS/PA, preenche um quadro por estado; o quinto quadro fica reservado para o Piauí ou outro estado. Termômetro de Convergência ao fim de cada estado.' }, { min: 5, txt: 'Perguntas e discussões. A UNODC registra os pontos principais e envia.' }] });
-  P('d1-estados2').campos = [P('d1-estados2').campos[0], { k: 'comuns', t: 'area', l: 'Pontos comuns aos estados dos dois blocos', rows: 3 }, { k: 'discussao', t: 'area', l: 'Perguntas e discussões: pontos principais', rows: 3 }];
+    passos: [{ min: 80, txt: 'Apresentações dos estados do bloco 2, 20 minutos cada. A UNODC, com o INPE e a SEMAS/PA, preenche o quadro de cada estado que se apresenta, incluindo o Piauí. Termômetro de Convergência ao fim de cada estado.' }, { min: 5, txt: 'Perguntas e discussões. A UNODC registra os pontos principais e envia.' }] });
+  P('d1-estados2').campos = [QUADROS(2), { k: 'comuns', t: 'area', l: 'Pontos comuns aos estados dos dois blocos', rows: 3 }, { k: 'discussao', t: 'area', l: 'Perguntas e discussões: pontos principais', rows: 3 }];
   // Dia 1 · Grupos temáticos: cada grupo discute o seu tema
   const gt = P('d1-grupos');
   Object.assign(gt, { conteudo: 'Divisão em grupos para discutir os temas: Dados e Metodologias; Sistemas e Interoperabilidade; Uso Operacional; Cooperação Institucional; Capacitação.',
@@ -1847,8 +1849,8 @@ module.exports = QRRSBlock;
     'd2-clinicas': ['A clínica trata as demandas que se encaixam na sua categoria', 'Use o levantamento prévio e o que foi apresentado no Dia 2 como referência', 'Registre a lacuna e a trilha de interoperabilidade de cada demanda'],
     'd3-priorizacao': ['Aplique os 6 critérios antes de escolher as prioridades', 'O quê: começa com verbo e gera um produto concreto', 'Quem: uma instituição responsável, não uma pessoa'] });
   P('d2-painel').campos = P('d2-painel').campos.map(f => ({ ...f, rows: 2 }));
-  Object.assign(PEDE, { 'd1-estados1': ['Para cada um dos 5 estados: programas, linhas de ação, ferramentas, integração, desafio, prática e demanda. Registro feito pela UNODC, com o INPE e a SEMAS/PA. Os demais estados, incluindo o Piauí, são registrados no bloco 2.', '5 quadros de estado e os pontos da discussão'],
-    'd1-estados2': ['Para cada um dos 4 estados: o mesmo quadro do bloco 1. O quinto quadro fica reservado para o Piauí ou outro estado. Registro feito pela UNODC, com o INPE e a SEMAS/PA.', '4 ou 5 quadros de estado, pontos comuns e pontos da discussão'],
+  Object.assign(PEDE, { 'd1-estados1': ['Para cada estado que se apresenta: programas, linhas de ação, ferramentas, integração, desafio, prática e demanda. O formulário traz os 9 estados da Amazônia Legal e o Piauí. Registro feito pela UNODC, com o INPE e a SEMAS/PA.', 'Quadros dos estados do bloco 1 e os pontos da discussão'],
+    'd1-estados2': ['Para cada estado que se apresenta: o mesmo quadro do bloco 1. O formulário traz os 9 estados da Amazônia Legal e o Piauí. Registro feito pela UNODC, com o INPE e a SEMAS/PA.', 'Quadros dos estados do bloco 2, pontos comuns e pontos da discussão'],
     'd1-grupos': ['Discutir o tema do grupo e registrar até 3 demandas, com desafio, para quem, quem pode atender e prioridade.', 'Até 3 demandas do tema e as perguntas para o Dia 2'],
     'd2-ufmg': ['Registrar o que a solução apresentada serve para os estados e o que ainda falta.', 'O que serve, o que falta e 1 pergunta'],
     'd2-clinicas': ['Identificar as demandas da categoria da clínica e preencher a matriz demanda–solução–lacuna, com trilha de interoperabilidade.', 'Matriz da clínica'],
@@ -2357,7 +2359,7 @@ function fieldHTML(f, data, ed, e, g, path = '') {
     case 'repeat': {
       const arr = Array.isArray(v) ? v : [];
       const n = Math.max(f.n, arr.length);
-      return `<div class="fld"><span class="lbl">${esc(f.item)}s</span><div class="rep ${f.compact ? 'compact' : 'cardgrid'}" ${f.compact ? '' : 'style="grid-template-columns:minmax(0,1fr)"'}>${Array.from({ length: n }, (_, i) =>
+      return `<div class="fld"><span class="lbl">${esc(f.item)}s</span>${f.h ? `<span class="hint">${esc(f.h)}</span>` : ''}<div class="rep ${f.compact ? 'compact' : 'cardgrid'}" ${f.compact ? '' : 'style="grid-template-columns:minmax(0,1fr)"'}>${Array.from({ length: n }, (_, i) =>
         `<div class="card"><div class="ct"><b><span class="num">${i + 1}</span>${esc(f.titles ? f.item + ': ' + f.titles[i] : f.item)}</b></div>${f.guias && f.guias[i] ? `<div class="guia"><span class="eyebrow">Perguntas para orientar a rodada</span><ul class="obs">${f.guias[i].map(q => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}${f.f.map(sf => fieldHTML(sf, arr[i] || {}, ed, e, g, `${key}.${i}.`)).join('')}</div>`).join('')}</div></div>`;
     }
     case 'lista': {
