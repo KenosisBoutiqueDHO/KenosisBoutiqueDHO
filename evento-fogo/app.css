@@ -185,6 +185,14 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 .panel { max-width: 1440px; margin: 0 auto; padding-block: 20px 60px; display: grid; gap: 18px; }
 .panel > * { min-width: 0; }
 .ro [data-liberar], .ro [data-libdia], .ro [data-auto], .ro [data-eqedit], .ro [data-cerca] { display: none !important; }
+.qrbox { display: grid; gap: 14px; } .qrleg { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } .qrleg > div { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff; } .qrleg p { margin: 4px 0; } .qrleg ul { margin: 4px 0 0; padding-left: 0; list-style: none; display: grid; gap: 2px; font-size: 14px; }
+.qrgrid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.qrc { border: 1px solid var(--line); border-top: 6px solid var(--g); border-radius: 12px; padding: 12px; background: #fff; display: grid; gap: 8px; align-content: start; }
+.qrc .qrh { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .qrc .qrh b { font-size: 20px; } .qrc .rp { font-size: 12px; background: #eef2f0; border-radius: 99px; padding: 2px 8px; }
+.qrc .hl { border-radius: 8px; padding: 6px 9px; display: grid; gap: 1px; } .qrc .hl span { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted, #5b6660); } .qrc .hl b { font-size: 14px; }
+.qrc .hl.t { background: color-mix(in srgb, var(--g) 12%, #fff); } .qrc .hl.c { background: #f4efe6; } .qrc .hl.n { background: #f2f2f2; }
+.qrc .qrimg { display: grid; place-items: center; } .qrc .qrimg svg { width: 170px; height: 170px; }
+.ro2 [data-pmesa], .ro2 #cred-novo { display: none !important; }
 .termoand { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: #fff; display: grid; gap: 8px; }
 .termoand .row2 { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .tbar { height: 12px; border-radius: 99px; background: #e6ebe8; overflow: hidden; } .tbar.sm { height: 6px; } .tbar i { display: block; height: 100%; background: #2E7D32; border-radius: 99px; }
