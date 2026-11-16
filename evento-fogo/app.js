@@ -1843,7 +1843,7 @@ module.exports = QRRSBlock;
     { k: 'anotacoes', t: 'area', l: 'Anotações gerais', rows: 4 }];
   // Ajuste em 16/11: a Missão de Belém começou às 10h25. Duração das sessões mantida; intervalo da manhã suprimido, almoço de 60 min e intervalo da tarde de 10 min.
   { const H = { 'd1-abertura': ['09:00', '10:25'], 'd1-belem': ['10:25', '11:15'], 'd1-estados1': ['11:15', '13:15'], 'd1-almoco': ['13:15', '14:15'], 'd1-barbante': ['14:15', '14:30'],
-      'd1-estados2': ['14:30', '15:55'], 'd1-int2': ['15:55', '16:05'], 'd1-grupos': ['16:05', '17:10'], 'd1-sintese': ['17:10', '17:40'] };
+      'd1-estados2': ['14:30', '16:00'], 'd1-int2': ['16:00', '16:05'], 'd1-grupos': ['16:05', '17:10'], 'd1-sintese': ['17:10', '17:40'] };
     Object.entries(H).forEach(([id, [a, b]]) => Object.assign(P(id), { ini: a, fim: b }));
     P('d1-abertura').passos = [{ min: 85, txt: 'Abertura institucional e alinhamento.' }];
     const i1 = ETAPAS.findIndex(e => e.id === 'd1-int1'); if (i1 >= 0) ETAPAS.splice(i1, 1); }
@@ -2697,7 +2697,7 @@ function ex1HTML() {
   if (d && d.status === 'enviada') return sel + `<div class="sentbox"><span class="ok-ic" aria-hidden="true">✓</span><div><h3>${esc(e.exNome)} enviado às ${hhmm(d.enviadoEm)}</h3><p>O registro da UNODC, com o INPE e a SEMAS/PA, foi entregue. Ele aparece na aba Respostas por etapa.</p></div></div>`;
   return sel + stageHTML(e, G[S.role], e); }
 // ---------- Cronômetro de palco (sinal das placas de 5, 2 e 1 minuto e TEMPO) ----------
-const SEGS = { 'd1-estados1': [['Apresentações iniciais · Amazonas e seguintes', 74], ['Amapá · 1ª pessoa (10 min)', 10], ['Amapá · 2ª pessoa (10 min)', 10], ['Perguntas e discussões', 26]], 'd1-estados2': [...[1, 2, 3, 4].flatMap(i => [[`Estado ${i} de 4 · 1ª pessoa (10 min)`, 10], [`Estado ${i} de 4 · 2ª pessoa (10 min)`, 10]]), ['Perguntas e discussões', 5]],
+const SEGS = { 'd1-estados1': [['Apresentações iniciais · Amazonas e seguintes', 74], ['Amapá · 1ª pessoa (10 min)', 10], ['Amapá · 2ª pessoa (10 min)', 10], ['Perguntas e discussões', 26]], 'd1-estados2': [['Mato Grosso e Piauí', 45], ['Rondônia · 1ª pessoa (10 min)', 10], ['Rondônia · 2ª pessoa (10 min)', 10], ['Próximo estado · 1ª pessoa (10 min)', 10], ['Próximo estado · 2ª pessoa (10 min)', 10], ['Perguntas e discussões', 5]],
   'd2-aplicacoes': [['Apresentação MMA', 20], ['Apresentação Ibama/Prevfogo', 20], ['Apresentação ICMBio', 20], ['Diálogo final de convergência', 30]] };
 const _mm = (t) => { const [a, b] = t.split(':').map(Number); return a * 60 + b; };
 function cronoHTML() {
