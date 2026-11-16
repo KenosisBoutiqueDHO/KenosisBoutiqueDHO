@@ -2705,31 +2705,49 @@ function cronoHTML() {
     <div class="cr-leg"><span><i style="background:#e2b100"></i>Placa 5 min</span><span><i style="background:#f07c1f"></i>Placa 2 min</span><span><i style="background:#e0412f"></i>Placa 1 min</span><span><i style="background:#ff2d2d"></i>Placa TEMPO</span></div>`;
 }
 function crBip(f, dur, n) { if (!S.crSom) return; try { S.crCtx = S.crCtx || new (window.AudioContext || window.webkitAudioContext)(); const c = S.crCtx; for (let i = 0; i < n; i++) { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = f; o.connect(g); g.connect(c.destination); const t = c.currentTime + i * (dur + .12); g.gain.setValueAtTime(.25, t); g.gain.exponentialRampToValueAtTime(.001, t + dur); o.start(t); o.stop(t + dur); } } catch {} }
-function cronoTick() {
-  const el = document.getElementById('crono'); if (!el) return;
+function cronoCalc() {
   const p2 = (n) => String(n).padStart(2, '0'); const hmm = (m) => `${p2(Math.floor(m / 60))}h${p2(m % 60)}`;
   const now = new Date(Date.now() - 3 * 3600e3); const iso = now.toISOString().slice(0, 10); const dia = DIAS.findIndex(d => d.data === iso) + 1;
   const at = S.atraso || 0; const t = now.getUTCHours() * 60 + now.getUTCMinutes() + now.getUTCSeconds() / 60 - at;
-  const set = (k, sinal, seg, sess, det, pills, next) => {
-    el.className = 'crono st-' + k; document.getElementById('cr-sinal').textContent = sinal;
-    if (seg == null) document.getElementById('cr-count').textContent = '--:--'; else { const a = Math.abs(Math.round(seg)); document.getElementById('cr-count').textContent = (seg < 0 ? '+' : '') + `${p2(Math.floor(a / 60))}:${p2(a % 60)}`; }
-    document.getElementById('cr-sess').textContent = sess; document.getElementById('cr-det').textContent = det; document.getElementById('cr-pills').innerHTML = pills || ''; document.getElementById('cr-next').textContent = next || '';
-    if (k !== S.crUlt) { if (k === '5') crBip(660, .25, 1); else if (k === '2') crBip(740, .25, 2); else if (k === '1') crBip(820, .25, 3); else if (k === 't') crBip(520, .6, 3); S.crUlt = k; } };
-  if (!dia) { set('ok', 'Fora dos dias do encontro', null, '—', 'O cronômetro funciona de 16 a 18/11, no horário de Brasília.', '', ''); return; }
+  if (!dia) return { k: 'ok', sinal: 'Fora dos dias do encontro', seg: null, sess: '—', det: 'O cronômetro funciona de 16 a 18/11, no horário de Brasília.', pills: '', next: '', chave: '' };
   const L = ETAPAS.filter(e => e.dia === dia && e.tipo !== 'pausa').map(e => ({ e, i: _mm(e.ini), f: _mm(e.fim), segs: SEGS[e.id] || [] }));
   const prox = L.find(x => x.i > t); const nx = prox ? `A seguir: ${hmm(prox.i + at)} · ${prox.e.sessao}` : 'Fim da programação do dia.';
   const fins = []; L.forEach(x => { let a = x.i; x.segs.forEach(([n, m]) => { a += m; fins.push([a, x.e.sessao + ' · ' + n]); }); if (!x.segs.length) fins.push([x.f, x.e.sessao]); });
   const acabou = fins.filter(([x]) => t >= x && t - x < 1).pop();
-  if (acabou) { set('t', 'MOSTRAR A PLACA: TEMPO', -(t - acabou[0]) * 60, acabou[1], 'Tempo encerrado. Encaminhar a próxima fala ou sessão.', '', nx); return; }
+  if (acabou) return { k: 't', sinal: 'MOSTRAR A PLACA: TEMPO', seg: -(t - acabou[0]) * 60, sess: acabou[1], det: 'Tempo encerrado. Encaminhar a próxima fala ou sessão.', pills: '', next: nx, chave: acabou[1] + '|' + acabou[0] };
   const cur = L.find(x => t >= x.i && t < x.f);
-  if (!cur) { set('ok', prox ? 'Intervalo' : 'Encerrado', prox ? (prox.i - t) * 60 : null, prox ? 'Próxima sessão' : '—', prox ? `${hmm(prox.i + at)} · ${prox.e.sessao}` : '', '', nx); return; }
+  if (!cur) return { k: 'ok', sinal: prox ? 'Intervalo' : 'Encerrado', seg: prox ? (prox.i - t) * 60 : null, sess: prox ? 'Próxima sessão' : '—', det: prox ? `${hmm(prox.i + at)} · ${prox.e.sessao}` : '', pills: '', next: nx, chave: '' };
   let fim = cur.f, rot = '', pills = '';
   if (cur.segs.length) { let a = cur.i, k = cur.segs.length - 1; for (let j = 0; j < cur.segs.length; j++) { if (t < a + cur.segs[j][1]) { k = j; break; } a += cur.segs[j][1]; } fim = a + cur.segs[k][1]; rot = cur.segs[k][0]; pills = cur.segs.map((_, j) => `<span class="${j === k ? 'on' : ''}">${j + 1}</span>`).join(''); }
   const seg = (fim - t) * 60; const k = seg <= 60 ? '1' : seg <= 120 ? '2' : seg <= 300 ? '5' : 'ok';
   const sinal = { ok: 'No tempo', 5: 'MOSTRAR A PLACA: 5 MINUTOS', 2: 'MOSTRAR A PLACA: 2 MINUTOS', 1: 'MOSTRAR A PLACA: 1 MINUTO' }[k];
-  set(k, sinal, seg, cur.e.sessao + (cur.e.ex ? ` · Exercício ${cur.e.ex}` : ''), `${hmm(cur.i + at)}–${hmm(cur.f + at)}${cur.e.quem ? ' · ' + cur.e.quem : ''}${rot ? ' · ' + rot : ''}`, pills, nx);
+  return { k, sinal, seg, sess: cur.e.sessao + (cur.e.ex ? ` · Exercício ${cur.e.ex}` : ''), det: `${hmm(cur.i + at)}–${hmm(cur.f + at)}${cur.e.quem ? ' · ' + cur.e.quem : ''}${rot ? ' · ' + rot : ''}`, pills, next: nx, chave: cur.e.id + '|' + rot + '|' + fim };
 }
-setInterval(() => { if (PANEL(S.role) && S.tab === 'crono') cronoTick(); }, 500);
+const crFmt = (seg) => { if (seg == null) return '--:--'; const p2 = (n) => String(n).padStart(2, '0'); const a = Math.abs(Math.round(seg)); return (seg < 0 ? '+' : '') + `${p2(Math.floor(a / 60))}:${p2(a % 60)}`; };
+function cronoTick() {
+  const el = document.getElementById('crono'); if (!el) return; const c = cronoCalc();
+  el.className = 'crono st-' + c.k; document.getElementById('cr-sinal').textContent = c.sinal; document.getElementById('cr-count').textContent = crFmt(c.seg);
+  document.getElementById('cr-sess').textContent = c.sess; document.getElementById('cr-det').textContent = c.det; document.getElementById('cr-pills').innerHTML = c.pills || ''; document.getElementById('cr-next').textContent = c.next || '';
+  if (c.k !== S.crUlt) { if (c.k === '5') crBip(660, .25, 1); else if (c.k === '2') crBip(740, .25, 2); else if (c.k === '1') crBip(820, .25, 3); else if (c.k === 't') crBip(520, .6, 3); S.crUlt = c.k; }
+}
+// ---------- Aviso em tela (pop-up) para as placas de 5 min, 1 min e TEMPO, em qualquer aba; Esc fecha ----------
+function avisoTick() {
+  if (!PANEL(S.role)) { const o = document.getElementById('aviso'); if (o) o.remove(); return; }
+  const c = cronoCalc(); const alvo = { 5: 'cinco', 1: 'um', t: 'tempo' }[c.k];
+  let o = document.getElementById('aviso');
+  if (!alvo) { if (o) o.remove(); S.avisoAtual = null; return; }
+  const chave = c.chave + '|' + c.k;
+  if (S.avisoFechado === chave) return;
+  if (!o) { o = document.createElement('div'); o.id = 'aviso'; o.setAttribute('role', 'alertdialog'); o.setAttribute('aria-modal', 'true'); o.innerHTML = `<div class="av-box"><div class="av-tit" id="av-tit"></div><div class="av-count" id="av-count"></div><div class="av-sess" id="av-sess"></div><button class="btn" id="av-fechar">Fechar (Esc)</button></div>`; document.body.appendChild(o); }
+  if (S.avisoAtual !== chave) { S.avisoAtual = chave; if (S.tab !== 'crono') { if (c.k === '5') crBip(660, .25, 1); else if (c.k === '1') crBip(820, .25, 3); else crBip(520, .6, 3); } }
+  o.className = 'av-' + alvo;
+  document.getElementById('av-tit').textContent = { cinco: 'PLACA: 5 MINUTOS', um: 'PLACA: 1 MINUTO', tempo: 'PLACA: TEMPO' }[alvo];
+  document.getElementById('av-count').textContent = crFmt(c.seg); document.getElementById('av-sess').textContent = c.sess + (c.det ? ' · ' + c.det : '');
+}
+function fecharAviso() { if (S.avisoAtual) S.avisoFechado = S.avisoAtual; const o = document.getElementById('aviso'); if (o) o.remove(); }
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && document.getElementById('aviso')) { ev.preventDefault(); fecharAviso(); } });
+document.addEventListener('click', (ev) => { if (ev.target.closest('#av-fechar') || ev.target.id === 'aviso') fecharAviso(); }, true);
+setInterval(() => { if (PANEL(S.role) && S.tab === 'crono') cronoTick(); avisoTick(); }, 500);
 function etapaStatus(e) {
   if (S.ativa && E[S.ativa]) { const ia = ETAPAS.indexOf(E[S.ativa]), i = ETAPAS.indexOf(e); return i < ia ? 'feito' : i === ia ? 'agora' : 'prox'; }
   const t = Date.now() - (S.atraso || 0) * 60000, dt = DIAS[e.dia - 1].data, ini = Date.parse(`${dt}T${e.ini}:00-03:00`), fim = Date.parse(`${dt}T${e.fim}:00-03:00`);
