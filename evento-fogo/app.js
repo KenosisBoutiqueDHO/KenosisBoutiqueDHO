@@ -2697,7 +2697,7 @@ function ex1HTML() {
   if (d && d.status === 'enviada') return sel + `<div class="sentbox"><span class="ok-ic" aria-hidden="true">✓</span><div><h3>${esc(e.exNome)} enviado às ${hhmm(d.enviadoEm)}</h3><p>O registro da UNODC, com o INPE e a SEMAS/PA, foi entregue. Ele aparece na aba Respostas por etapa.</p></div></div>`;
   return sel + stageHTML(e, G[S.role], e); }
 // ---------- Cronômetro de palco (sinal das placas de 5, 2 e 1 minuto e TEMPO) ----------
-const SEGS = { 'd1-estados1': [['Apresentações iniciais · Amazonas e seguintes', 74], ['Apresentação · Amapá', 20], ['Perguntas e discussões', 26]], 'd1-estados2': [...[1, 2, 3, 4].map(i => [`Apresentação ${i} de 4`, 20]), ['Perguntas e discussões', 5]],
+const SEGS = { 'd1-estados1': [['Apresentações iniciais · Amazonas e seguintes', 74], ['Amapá · 1ª pessoa (10 min)', 10], ['Amapá · 2ª pessoa (10 min)', 10], ['Perguntas e discussões', 26]], 'd1-estados2': [...[1, 2, 3, 4].flatMap(i => [[`Estado ${i} de 4 · 1ª pessoa (10 min)`, 10], [`Estado ${i} de 4 · 2ª pessoa (10 min)`, 10]]), ['Perguntas e discussões', 5]],
   'd2-aplicacoes': [['Apresentação MMA', 20], ['Apresentação Ibama/Prevfogo', 20], ['Apresentação ICMBio', 20], ['Diálogo final de convergência', 30]] };
 const _mm = (t) => { const [a, b] = t.split(':').map(Number); return a * 60 + b; };
 function cronoHTML() {
