@@ -2121,7 +2121,7 @@ function attachDb() {
     Object.keys(S.resp).forEach(id => { if (!snap.docs.find(d => d.id === id) && S.resp[id]?.grupo === S.role && S.resp[id].atualizadoEm && S.resp[id].status !== 'vazio') queueSave(id); });
     softRender();
   }, () => { S.mode = 'local'; setSync(); });
-  S.db.doc('controle/estado').onSnapshot(s => { const v = s.data(); const prev = S.ativa; S.ativa = v?.ativa || null; S.ativaAuto = !v?.ativa; const dl = JSON.stringify(v?.dias || []); const dch = dl !== JSON.stringify(S.diasLib || []); S.diasLib = v?.dias || [];
+  S.db.doc('controle/estado').onSnapshot(s => { const v = s.data(); S.atraso = Math.round(+(v?.atraso) || 0); const prev = S.ativa; S.ativa = v?.ativa || null; S.ativaAuto = !v?.ativa; const dl = JSON.stringify(v?.dias || []); const dch = dl !== JSON.stringify(S.diasLib || []); S.diasLib = v?.dias || [];
     if (S.role && !PANEL(S.role) && (prev !== S.ativa || dch) && !document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; render(); scrollTo(0, y); } else softRender(); }, () => {});
   S.db.collection('avaliacoes').onSnapshot(s => { S.avals = s.docs.map(d => d.data()).filter(Boolean); if (PANEL(S.role) && S.tab === 'avaliacoes' && S.screen === 'auto') render(); }, () => {});
   // envia avaliações guardadas sem conexão
@@ -2562,6 +2562,9 @@ document.addEventListener('click', async ev => {
   if (b.dataset.confirmar) { b.disabled = true; await enviarExercicio(b.dataset.confirmar); return; }
   // painel
   if (b.id === 'geo-tentar') { b.disabled = true; b.textContent = 'Conferindo a localização…'; GEO.pos = null; GEO.err = null; GEO.pedido = true; await geoObter(); const c = S.codePend || LS.get('codigo', null); S.bloqueio = null; if (c) { await entrar(c); } else { S.screen = 'login'; render(); } return; }
+  if (b.id === 'cr-som') { S.crSom = !S.crSom; b.textContent = S.crSom ? 'Som ativado' : 'Ativar som'; if (S.crSom) crBip(700, .15, 1); return; }
+  if (b.id === 'cr-tela') { const el = document.getElementById('crono'); try { document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen(); } catch {} try { navigator.wakeLock?.request('screen').catch(() => {}); } catch {} return; }
+  if (b.id === 'cr-aplicar') { const v = Math.round(+document.getElementById('cr-atraso').value || 0); try { await rpc('ef_atraso', { p_codigo: LS.get('codigo', null), p_min: v }); S.atraso = v; toast(`Atraso de ${v} min aplicado para todos`); } catch { toast('Não foi possível aplicar agora. Verifique a conexão.'); } render(); return; }
   if (b.dataset.copyqr) { const c = S.qr && S.qr[b.dataset.copyqr]; if (c) { try { await navigator.clipboard.writeText(SITE + '#acesso=' + c); toast('Link de acesso copiado'); } catch { toast('Não foi possível copiar.'); } } return; }
   if (b.dataset.unodcex) { S.unodcEx = b.dataset.unodcex; render(); return; }
   if (b.dataset.cerca) { try { await rpc('ef_cerca', { p_codigo: LS.get('codigo', null), p_modo: b.dataset.cerca }); S.cerca = { ...(S.cerca || {}), modo: b.dataset.cerca }; toast(b.dataset.cerca === 'desligada' ? 'Verificação de local desligada' : b.dataset.cerca === 'ligada' ? 'Verificação de local ligada agora' : 'Verificação de local automática nos dias do encontro'); } catch { toast('Não foi possível alterar agora. Verifique a conexão.'); } render(); return; }
@@ -2645,9 +2648,9 @@ async function liberar(id) {
   render();
 }
 function panelHTML() {
-  const tabs = LEITURA(S.role) ? [['agenda', 'Agenda'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['credenciamento', 'Participantes'], ['avaliacoes', 'Avaliações']]
-    : S.role === 'unodc' ? [['ex1', 'Estados (registro da UNODC)'], ['agenda', 'Agenda'], ['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Grupos, QR Codes e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações']]
-    : [['conducao', 'Condução'], ['agenda', 'Agenda'], ['credenciamento', 'Credenciamento'], ['mapa', 'Grupos, QR Codes e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['seguranca', 'Segurança' + ((S.alertas || []).length ? ` (${S.alertas.length})` : '')], ['exportar', 'Exportar e importar']];
+  const tabs = LEITURA(S.role) ? [['crono', 'Cronômetro'], ['agenda', 'Agenda'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['credenciamento', 'Participantes'], ['avaliacoes', 'Avaliações']]
+    : S.role === 'unodc' ? [['ex1', 'Estados (registro da UNODC)'], ['crono', 'Cronômetro'], ['agenda', 'Agenda'], ['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Grupos, QR Codes e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações']]
+    : [['conducao', 'Condução'], ['crono', 'Cronômetro'], ['agenda', 'Agenda'], ['credenciamento', 'Credenciamento'], ['mapa', 'Grupos, QR Codes e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['seguranca', 'Segurança' + ((S.alertas || []).length ? ` (${S.alertas.length})` : '')], ['exportar', 'Exportar e importar']];
   if (S.role === 'unodc' && S.tabIni !== 'unodc') { S.tab = 'ex1'; S.tabIni = 'unodc'; }
   if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
   return `<div class="wrap"><div class="panel ${S.role === 'unodc' ? 'ro' : LEITURA(S.role) ? 'ro ro2' : ''}">
@@ -2655,10 +2658,10 @@ function panelHTML() {
     ${S.mode === 'local' ? `<div class="banner">Modo local: este aparelho não está sincronizando. Os celulares seguem o próprio relógio e guardam as respostas. Ao final, importe o arquivo de cada tablet na aba Exportar e importar.</div>` : ''}
     ${S.role === 'equipe' && (S.alertas || []).some(a => a.tipo === 'fora_da_area') && S.tab !== 'seguranca' ? `<div class="banner" style="border-color:#B3261E;background:#fbeceb"><b>Atenção:</b> houve tentativa de acesso de fora do INPE com o QR Code de: ${[...new Set(S.alertas.filter(a => a.tipo === 'fora_da_area').map(a => G[a.mesa]?.papel || a.mesa))].map(esc).join(', ')}. <button class="btn small" data-tab="seguranca">Ver detalhes</button></div>` : ''}
     <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}">${l}</button>`).join('')}</div>
-    <div id="tabbody">${({ mapa: () => mapaHTML().replace('class="wrap"', 'class=""'), ex1: ex1HTML, agenda: () => agendaHTML(true), conducao: conducaoHTML, credenciamento: credHTML, respostas: respostasHTML, matriz: matrizHTML, perguntas: perguntasHTML, termometro: termoHTML, avaliacoes: avaliacoesHTML, seguranca: segHTML, exportar: exportHTML })[S.tab]()}</div>
+    <div id="tabbody">${({ mapa: () => mapaHTML().replace('class="wrap"', 'class=""'), ex1: ex1HTML, crono: cronoHTML, agenda: () => agendaHTML(true), conducao: conducaoHTML, credenciamento: credHTML, respostas: respostasHTML, matriz: matrizHTML, perguntas: perguntasHTML, termometro: termoHTML, avaliacoes: avaliacoesHTML, seguranca: segHTML, exportar: exportHTML })[S.tab]()}</div>
   </div></div>`;
 }
-function afterPanel() { tick(); if (S.role === 'equipe' && S.tab === 'mapa' && !S.qr && !S.qrPedido) { S.qrPedido = true; rpc('ef_qr', { p_codigo: LS.get('codigo', null) }).then(r => { S.qr = r || {}; const y = scrollY; render(); scrollTo(0, y); }).catch(() => { S.qrPedido = false; }); } }
+function afterPanel() { tick(); if (S.tab === 'crono') { S.crUlt = null; cronoTick(); } if (S.role === 'equipe' && S.tab === 'mapa' && !S.qr && !S.qrPedido) { S.qrPedido = true; rpc('ef_qr', { p_codigo: LS.get('codigo', null) }).then(r => { S.qr = r || {}; const y = scrollY; render(); scrollTo(0, y); }).catch(() => { S.qrPedido = false; }); } }
 function credROHTML() {
   const P = S.parts || []; const dia = credDia(); const dl = DIAS3.find(d => d[0] === dia)[1];
   return `<div style="display:grid;gap:12px"><div class="credbar"><span class="seg3" role="group" aria-label="Dia">${DIAS3.map(([k, l]) => `<button data-pdia="${k}" aria-pressed="${k === dia}">${l}</button>`).join('')}</span><span class="muted">${P.filter(p => p.presenca && p.presenca[dia]).length} presentes em ${dl} · ${P.length} inscritos</span></div>
@@ -2683,9 +2686,45 @@ function ex1HTML() {
   const sel = `<div class="seg3" role="group" aria-label="Bloco" style="margin-bottom:12px">${ids.map(id => `<button data-unodcex="${id}" aria-pressed="${id === S.unodcEx}">${esc(E[id].sessao)}${S.resp[docId(id, 'unodc')]?.status === 'enviada' ? ' ✓' : ''}</button>`).join('')}</div>`;
   if (d && d.status === 'enviada') return sel + `<div class="sentbox"><span class="ok-ic" aria-hidden="true">✓</span><div><h3>${esc(e.exNome)} enviado às ${hhmm(d.enviadoEm)}</h3><p>O registro da UNODC, com o INPE e a SEMAS/PA, foi entregue. Ele aparece na aba Respostas por etapa.</p></div></div>`;
   return sel + stageHTML(e, G.unodc, e); }
+// ---------- Cronômetro de palco (sinal das placas de 5, 2 e 1 minuto e TEMPO) ----------
+const SEGS = { 'd1-estados1': [...[1, 2, 3, 4, 5].map(i => [`Apresentação ${i} de 5`, 20]), ['Perguntas e discussões', 20]], 'd1-estados2': [...[1, 2, 3, 4].map(i => [`Apresentação ${i} de 4`, 20]), ['Perguntas e discussões', 5]],
+  'd2-aplicacoes': [['Apresentação MMA', 20], ['Apresentação Ibama/Prevfogo', 20], ['Apresentação ICMBio', 20], ['Diálogo final de convergência', 30]] };
+const _mm = (t) => { const [a, b] = t.split(':').map(Number); return a * 60 + b; };
+function cronoHTML() {
+  return `<div class="crono st-ok" id="crono"><div class="cr-sinal" id="cr-sinal">—</div><div class="cr-count" id="cr-count">--:--</div><div class="cr-sess"><b id="cr-sess">—</b><span id="cr-det"></span><div class="cr-pills" id="cr-pills"></div></div><div class="cr-next" id="cr-next"></div></div>
+    <div class="cr-ctrl">${S.role === 'equipe' ? `<label for="cr-atraso">Atraso da programação (min)<input id="cr-atraso" type="number" step="1" value="${S.atraso || 0}"></label><button class="btn small" id="cr-aplicar">Aplicar para todos</button>` : `<span class="muted">Atraso definido pela Kenosis: ${S.atraso || 0} min</span>`}
+      <button class="btn small ghost" id="cr-som">${S.crSom ? 'Som ativado' : 'Ativar som'}</button><button class="btn small ghost" id="cr-tela">Tela cheia</button></div>
+    <div class="cr-leg"><span><i style="background:#e2b100"></i>Placa 5 min</span><span><i style="background:#f07c1f"></i>Placa 2 min</span><span><i style="background:#e0412f"></i>Placa 1 min</span><span><i style="background:#ff2d2d"></i>Placa TEMPO</span></div>`;
+}
+function crBip(f, dur, n) { if (!S.crSom) return; try { S.crCtx = S.crCtx || new (window.AudioContext || window.webkitAudioContext)(); const c = S.crCtx; for (let i = 0; i < n; i++) { const o = c.createOscillator(), g = c.createGain(); o.frequency.value = f; o.connect(g); g.connect(c.destination); const t = c.currentTime + i * (dur + .12); g.gain.setValueAtTime(.25, t); g.gain.exponentialRampToValueAtTime(.001, t + dur); o.start(t); o.stop(t + dur); } } catch {} }
+function cronoTick() {
+  const el = document.getElementById('crono'); if (!el) return;
+  const p2 = (n) => String(n).padStart(2, '0'); const hmm = (m) => `${p2(Math.floor(m / 60))}h${p2(m % 60)}`;
+  const now = new Date(Date.now() - 3 * 3600e3); const iso = now.toISOString().slice(0, 10); const dia = DIAS.findIndex(d => d.data === iso) + 1;
+  const at = S.atraso || 0; const t = now.getUTCHours() * 60 + now.getUTCMinutes() + now.getUTCSeconds() / 60 - at;
+  const set = (k, sinal, seg, sess, det, pills, next) => {
+    el.className = 'crono st-' + k; document.getElementById('cr-sinal').textContent = sinal;
+    if (seg == null) document.getElementById('cr-count').textContent = '--:--'; else { const a = Math.abs(Math.round(seg)); document.getElementById('cr-count').textContent = (seg < 0 ? '+' : '') + `${p2(Math.floor(a / 60))}:${p2(a % 60)}`; }
+    document.getElementById('cr-sess').textContent = sess; document.getElementById('cr-det').textContent = det; document.getElementById('cr-pills').innerHTML = pills || ''; document.getElementById('cr-next').textContent = next || '';
+    if (k !== S.crUlt) { if (k === '5') crBip(660, .25, 1); else if (k === '2') crBip(740, .25, 2); else if (k === '1') crBip(820, .25, 3); else if (k === 't') crBip(520, .6, 3); S.crUlt = k; } };
+  if (!dia) { set('ok', 'Fora dos dias do encontro', null, '—', 'O cronômetro funciona de 16 a 18/11, no horário de Brasília.', '', ''); return; }
+  const L = ETAPAS.filter(e => e.dia === dia && e.tipo !== 'pausa').map(e => ({ e, i: _mm(e.ini), f: _mm(e.fim), segs: SEGS[e.id] || [] }));
+  const prox = L.find(x => x.i > t); const nx = prox ? `A seguir: ${hmm(prox.i + at)} · ${prox.e.sessao}` : 'Fim da programação do dia.';
+  const fins = []; L.forEach(x => { let a = x.i; x.segs.forEach(([n, m]) => { a += m; fins.push([a, x.e.sessao + ' · ' + n]); }); if (!x.segs.length) fins.push([x.f, x.e.sessao]); });
+  const acabou = fins.filter(([x]) => t >= x && t - x < 1).pop();
+  if (acabou) { set('t', 'MOSTRAR A PLACA: TEMPO', -(t - acabou[0]) * 60, acabou[1], 'Tempo encerrado. Encaminhar a próxima fala ou sessão.', '', nx); return; }
+  const cur = L.find(x => t >= x.i && t < x.f);
+  if (!cur) { set('ok', prox ? 'Intervalo' : 'Encerrado', prox ? (prox.i - t) * 60 : null, prox ? 'Próxima sessão' : '—', prox ? `${hmm(prox.i + at)} · ${prox.e.sessao}` : '', '', nx); return; }
+  let fim = cur.f, rot = '', pills = '';
+  if (cur.segs.length) { let a = cur.i, k = cur.segs.length - 1; for (let j = 0; j < cur.segs.length; j++) { if (t < a + cur.segs[j][1]) { k = j; break; } a += cur.segs[j][1]; } fim = a + cur.segs[k][1]; rot = cur.segs[k][0]; pills = cur.segs.map((_, j) => `<span class="${j === k ? 'on' : ''}">${j + 1}</span>`).join(''); }
+  const seg = (fim - t) * 60; const k = seg <= 60 ? '1' : seg <= 120 ? '2' : seg <= 300 ? '5' : 'ok';
+  const sinal = { ok: 'No tempo', 5: 'MOSTRAR A PLACA: 5 MINUTOS', 2: 'MOSTRAR A PLACA: 2 MINUTOS', 1: 'MOSTRAR A PLACA: 1 MINUTO' }[k];
+  set(k, sinal, seg, cur.e.sessao + (cur.e.ex ? ` · Exercício ${cur.e.ex}` : ''), `${hmm(cur.i + at)}–${hmm(cur.f + at)}${cur.e.quem ? ' · ' + cur.e.quem : ''}${rot ? ' · ' + rot : ''}`, pills, nx);
+}
+setInterval(() => { if (PANEL(S.role) && S.tab === 'crono') cronoTick(); }, 500);
 function etapaStatus(e) {
   if (S.ativa && E[S.ativa]) { const ia = ETAPAS.indexOf(E[S.ativa]), i = ETAPAS.indexOf(e); return i < ia ? 'feito' : i === ia ? 'agora' : 'prox'; }
-  const t = Date.now(), dt = DIAS[e.dia - 1].data, ini = Date.parse(`${dt}T${e.ini}:00-03:00`), fim = Date.parse(`${dt}T${e.fim}:00-03:00`);
+  const t = Date.now() - (S.atraso || 0) * 60000, dt = DIAS[e.dia - 1].data, ini = Date.parse(`${dt}T${e.ini}:00-03:00`), fim = Date.parse(`${dt}T${e.fim}:00-03:00`);
   return t >= fim ? 'feito' : t >= ini ? 'agora' : 'prox';
 }
 function agendaHTML(inPanel) {
