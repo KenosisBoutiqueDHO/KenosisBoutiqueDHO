@@ -1943,6 +1943,8 @@ function tick() {
   document.querySelectorAll('[data-timer]').forEach(el => paintTimer(el, E[el.dataset.timer]));
   const mk = d.getHours() * 60 + d.getMinutes();
   if (S.agMin == null) S.agMin = mk;
+  const ag20 = Math.floor(d.getTime() / 20000) + '|' + (S.atraso || 0);
+  if (ag20 !== S.ag20) { S.ag20 = ag20; S.agMin = null; }
   if (mk !== S.agMin) { S.agMin = mk; if ((S.screen === 'agenda' || (PANEL(S.role) && S.tab === 'agenda')) && !document.activeElement?.matches?.('input,textarea,select')) { const y = scrollY; setTimeout(() => { render(); scrollTo(0, y); }, 0); } }
 }
 function paintTimer(el, e) {
@@ -2764,7 +2766,7 @@ function agendaHTML(inPanel) {
       <div class="leg">${ic('agora')} Em atividade ${ic('feito')} Realizado ${ic('prox')} A seguir</div>${atual ? `<p style="margin:6px 0 0">Agora: <b>${esc(atual.sessao)}</b> (${hm(atual.ini)}–${hm(atual.fim)})</p>` : ''}</div>
     ${DIAS.map(d => { const di = its.filter(e => e.dia === d.n); const fd = di.filter(e => etapaStatus(e) === 'feito').length;
       return `<section class="agday"><div class="dayhead"><h2>${esc(d.rotulo)}</h2><span class="muted">${esc(d.eixo)}</span></div><div class="tbar sm"><i style="width:${Math.round(fd / di.length * 100)}%"></i></div>
-      <ol class="agl">${ETAPAS.filter(e => e.dia === d.n).map(e => { if (e.tipo === 'pausa') return `<li class="pz"><span></span><span class="mono">${hm(e.ini)}–${hm(e.fim)}</span><span>${esc(e.sessao)}</span><span></span></li>`;
+      <ol class="agl">${ETAPAS.filter(e => e.dia === d.n).map(e => { if (e.tipo === 'pausa') return `<li class="pz ${etapaStatus(e) === 'feito' ? 'feito' : ''}"><span></span><span class="mono">${hm(e.ini)}–${hm(e.fim)}</span><span>${esc(e.sessao)}</span><span></span></li>`;
         const s = etapaStatus(e); return `<li class="${s}">${ic(s)}<span class="mono">${hm(e.ini)}–${hm(e.fim)}</span><span><b>${esc(e.sessao)}</b><small>${esc(e.quem || '')}${e.ex ? ' · ' + esc(e.exNome.split(' · ')[0]) : ''}${e.resp === 'unodc' ? ' (registro de UNODC, INPE e SEMAS/PA)' : ''}</small></span><span class="lbx">${lb[s]}</span></li>`; }).join('')}</ol></section>`; }).join('')}
   </div></div>`;
 }
