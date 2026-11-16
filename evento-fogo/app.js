@@ -1841,6 +1841,12 @@ module.exports = QRRSBlock;
   pl.campos = [{ k: 'acoes', t: 'repeat', n: 5, item: 'Eixo', titles: ['Dados', 'Funcionalidades', 'Capacitações', 'Cooperação', 'Interoperabilidade (trilha SISFOGO/ADPF nº 743)'],
     f: [{ k: 'horizonte', t: 'choice', l: 'Horizonte', o: ['Curto', 'Médio', 'Longo'] }, ...W5, { k: 'produto', t: 'line', l: 'Produto esperado' }] },
     { k: 'anotacoes', t: 'area', l: 'Anotações gerais', rows: 4 }];
+  // Ajuste em 16/11: a Missão de Belém começou às 10h25. Duração das sessões mantida; intervalo da manhã suprimido, almoço de 60 min e intervalo da tarde de 10 min.
+  { const H = { 'd1-abertura': ['09:00', '10:25'], 'd1-belem': ['10:25', '11:05'], 'd1-estados1': ['11:05', '13:05'], 'd1-almoco': ['13:05', '14:05'], 'd1-barbante': ['14:05', '14:20'],
+      'd1-estados2': ['14:20', '15:45'], 'd1-int2': ['15:45', '15:55'], 'd1-grupos': ['15:55', '17:00'], 'd1-sintese': ['17:00', '17:30'] };
+    Object.entries(H).forEach(([id, [a, b]]) => Object.assign(P(id), { ini: a, fim: b }));
+    P('d1-abertura').passos = [{ min: 85, txt: 'Abertura institucional e alinhamento.' }];
+    const i1 = ETAPAS.findIndex(e => e.id === 'd1-int1'); if (i1 >= 0) ETAPAS.splice(i1, 1); }
   ETAPAS.sort((a, b) => a.dia - b.dia || _m(a.ini) - _m(b.ini));
   Object.assign(TEMAS, { 'd1-barbante': 'Integração', 'd2-ufmg': 'Soluções e pesquisa' });
   Object.assign(OBSERVE, { 'd1-estados1': ['PMIF: existe, está vigente, quem coordena', 'Sala de situação: estrutura, rotina e quem decide', 'O que a apresentação confirma ou acrescenta ao levantamento prévio do estado'],
