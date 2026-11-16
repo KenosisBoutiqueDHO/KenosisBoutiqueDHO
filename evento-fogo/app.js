@@ -1903,7 +1903,8 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<'
 const hm = (h) => h.replace(':', 'h');
 const pad = (n) => String(n).padStart(2, '0');
 const fromMin = (m) => `${pad(Math.floor(m / 60))}h${pad(m % 60)}`;
-const G = Object.fromEntries([...GRUPOS, CFG.GUNODC].map(g => [g.id, g]));
+const INST = ['unodc', 'inpe', 'semas']; // instituições que registram os Estados
+const G = Object.fromEntries([...GRUPOS, { ...CFG.GUNODC, nome: 'UNODC', papel: 'UNODC' }, { ...CFG.GUNODC, id: 'inpe', nome: 'INPE', papel: 'INPE', cor: '#1F5E8C' }, { ...CFG.GUNODC, id: 'semas', nome: 'SEMAS/PA', papel: 'SEMAS/PA', cor: '#2E7D5B' }].map(g => [g.id, g]));
 const E = Object.fromEntries(ETAPAS.map(e => [e.id, e]));
 const WORK = ETAPAS.filter(e => e.tipo !== 'pausa');
 const LS = {
@@ -2027,7 +2028,7 @@ function SupaDB(codigo) {
     doc: (path) => ({
       onSnapshot: (cb, err) => { if (key(path) === 'controle') L.controle.push([cb, err]); },
       set: (v) => { const [col, id] = path.split('/');
-        if (col === 'respostas') return rpc(S.role === 'unodc' ? 'ef_salvar_unodc' : 'ef_salvar', { p_codigo: codigo, p_id: id, p_doc: v }).then(r => { setTimeout(poll, 300); return r; });
+        if (col === 'respostas') return rpc(INST.includes(S.role) ? 'ef_salvar_unodc' : 'ef_salvar', { p_codigo: codigo, p_id: id, p_doc: v }).then(r => { setTimeout(poll, 300); return r; });
         if (col === 'controle') return rpc('ef_liberar', { p_codigo: codigo, p_etapa: v.ativa || null }).then(r => { setTimeout(poll, 300); return r; });
         if (col === 'termometro') return rpc('ef_termometro', { p_codigo: codigo, p_uf: v.uf || id, p_valor: v });
         return Promise.resolve(); },
@@ -2655,10 +2656,10 @@ async function liberar(id) {
   render();
 }
 function panelHTML() {
-  const tabs = LEITURA(S.role) ? [['crono', 'Cronômetro'], ['agenda', 'Agenda'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['credenciamento', 'Participantes'], ['avaliacoes', 'Avaliações']]
+  const tabs = LEITURA(S.role) ? [['ex1', 'Estados (registro)'], ['crono', 'Cronômetro'], ['agenda', 'Agenda'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['credenciamento', 'Participantes'], ['avaliacoes', 'Avaliações']]
     : S.role === 'unodc' ? [['ex1', 'Estados (registro da UNODC)'], ['crono', 'Cronômetro'], ['agenda', 'Agenda'], ['conducao', 'Condução'], ['credenciamento', 'Credenciamento'], ['mapa', 'Grupos, QR Codes e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações']]
     : [['conducao', 'Condução'], ['crono', 'Cronômetro'], ['agenda', 'Agenda'], ['credenciamento', 'Credenciamento'], ['mapa', 'Grupos, QR Codes e links'], ['respostas', 'Respostas por etapa'], ['matriz', 'Matriz comum'], ['perguntas', 'Perguntas'], ['termometro', 'Termômetro'], ['avaliacoes', 'Avaliações'], ['seguranca', 'Segurança' + ((S.alertas || []).length ? ` (${S.alertas.length})` : '')], ['exportar', 'Exportar e importar']];
-  if (S.role === 'unodc' && S.tabIni !== 'unodc') { S.tab = 'ex1'; S.tabIni = 'unodc'; }
+  if (INST.includes(S.role) && S.tabIni !== S.role) { S.tab = 'ex1'; S.tabIni = S.role; }
   if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
   return `<div class="wrap"><div class="panel ${S.role === 'unodc' ? 'ro' : LEITURA(S.role) ? 'ro ro2' : ''}">
     ${S.mode === 'demo' ? `<div class="banner">Demonstração: libere etapas e veja as respostas deste aparelho. Nada é gravado na base do encontro.</div>` : ''}
@@ -2689,10 +2690,10 @@ function gruposQRHTML() {
 }
 function ex1HTML() {
   const ids = ETAPAS.filter(e => e.resp === 'unodc').map(e => e.id); if (!S.unodcEx || !ids.includes(S.unodcEx)) S.unodcEx = ids[0];
-  const e = E[S.unodcEx]; const d = S.resp[docId(e.id, 'unodc')];
-  const sel = `<div class="seg3" role="group" aria-label="Bloco" style="margin-bottom:12px">${ids.map(id => `<button data-unodcex="${id}" aria-pressed="${id === S.unodcEx}">${esc(E[id].sessao)}${S.resp[docId(id, 'unodc')]?.status === 'enviada' ? ' ✓' : ''}</button>`).join('')}</div>`;
+  const e = E[S.unodcEx]; const d = S.resp[docId(e.id, S.role)];
+  const sel = `<p class="muted" style="margin:0 0 8px">Registro de ${esc(G[S.role].nome)}. UNODC, INPE e SEMAS/PA registram cada um no seu próprio formulário; nada de um sobrescreve o do outro.</p><div class="seg3" role="group" aria-label="Bloco" style="margin-bottom:12px">${ids.map(id => `<button data-unodcex="${id}" aria-pressed="${id === S.unodcEx}">${esc(E[id].sessao)}${S.resp[docId(id, S.role)]?.status === 'enviada' ? ' ✓' : ''}</button>`).join('')}</div>`;
   if (d && d.status === 'enviada') return sel + `<div class="sentbox"><span class="ok-ic" aria-hidden="true">✓</span><div><h3>${esc(e.exNome)} enviado às ${hhmm(d.enviadoEm)}</h3><p>O registro da UNODC, com o INPE e a SEMAS/PA, foi entregue. Ele aparece na aba Respostas por etapa.</p></div></div>`;
-  return sel + stageHTML(e, G.unodc, e); }
+  return sel + stageHTML(e, G[S.role], e); }
 // ---------- Cronômetro de palco (sinal das placas de 5, 2 e 1 minuto e TEMPO) ----------
 const SEGS = { 'd1-estados1': [...[1, 2, 3, 4, 5].map(i => [`Apresentação ${i} de 5`, 20]), ['Perguntas e discussões', 20]], 'd1-estados2': [...[1, 2, 3, 4].map(i => [`Apresentação ${i} de 4`, 20]), ['Perguntas e discussões', 5]],
   'd2-aplicacoes': [['Apresentação MMA', 20], ['Apresentação Ibama/Prevfogo', 20], ['Apresentação ICMBio', 20], ['Diálogo final de convergência', 30]] };
@@ -2746,7 +2747,7 @@ function agendaHTML(inPanel) {
     ${DIAS.map(d => { const di = its.filter(e => e.dia === d.n); const fd = di.filter(e => etapaStatus(e) === 'feito').length;
       return `<section class="agday"><div class="dayhead"><h2>${esc(d.rotulo)}</h2><span class="muted">${esc(d.eixo)}</span></div><div class="tbar sm"><i style="width:${Math.round(fd / di.length * 100)}%"></i></div>
       <ol class="agl">${ETAPAS.filter(e => e.dia === d.n).map(e => { if (e.tipo === 'pausa') return `<li class="pz"><span></span><span class="mono">${hm(e.ini)}–${hm(e.fim)}</span><span>${esc(e.sessao)}</span><span></span></li>`;
-        const s = etapaStatus(e); return `<li class="${s}">${ic(s)}<span class="mono">${hm(e.ini)}–${hm(e.fim)}</span><span><b>${esc(e.sessao)}</b><small>${esc(e.quem || '')}${e.ex ? ' · ' + esc(e.exNome.split(' · ')[0]) : ''}${e.resp === 'unodc' ? ' (registro da UNODC)' : ''}</small></span><span class="lbx">${lb[s]}</span></li>`; }).join('')}</ol></section>`; }).join('')}
+        const s = etapaStatus(e); return `<li class="${s}">${ic(s)}<span class="mono">${hm(e.ini)}–${hm(e.fim)}</span><span><b>${esc(e.sessao)}</b><small>${esc(e.quem || '')}${e.ex ? ' · ' + esc(e.exNome.split(' · ')[0]) : ''}${e.resp === 'unodc' ? ' (registro de UNODC, INPE e SEMAS/PA)' : ''}</small></span><span class="lbx">${lb[s]}</span></li>`; }).join('')}</ol></section>`; }).join('')}
   </div></div>`;
 }
 function segHTML() {
@@ -2761,7 +2762,7 @@ function segHTML() {
     <h3 style="margin:18px 0 8px">Ocorrências registradas</h3>
     ${A.length ? `<div class="tbl-wrap"><table><thead><tr><th>Quando</th><th>QR Code do grupo</th><th>Ocorrência</th><th>Distância do INPE</th><th>Local aproximado</th><th>Precisão</th><th>Conexão</th></tr></thead><tbody>${A.map(a => `<tr><td>${fmt(a.quando)}</td><td><b>${esc(G[a.mesa]?.papel || a.mesa)}</b></td><td>${a.tipo === 'fora_da_area' ? 'Acesso de fora do local' : 'Localização recusada ou indisponível'}</td><td>${a.distancia_km != null ? esc(String(a.distancia_km).replace('.', ',')) + ' km' : '—'}</td><td>${a.lat_aprox != null ? esc(a.lat_aprox + ', ' + a.lng_aprox) : '—'}</td><td>${a.precisao_m != null ? esc(String(a.precisao_m)) + ' m' : '—'}</td><td style="font-size:12px">${esc(a.ip || '—')}</td></tr>`).join('')}</tbody></table></div>` : '<p class="muted">Nenhuma ocorrência até agora.</p>'}`;
 }
-function dotsFor(e) { return `<span class="dots">${(e.resp === 'unodc' ? [G.unodc] : GRUPOS).map(g => { const s = statusOf(e.id, g.id); return `<i class="${s === 'enviada' ? 'ok' : s === 'andamento' ? 'and' : ''}" style="--gc:${g.cor}" title="${esc(g.nome)}: ${s === 'enviada' ? 'enviado' : s === 'andamento' ? 'em rascunho' : 'sem registro'}"></i>`; }).join('')}</span>`; }
+function dotsFor(e) { return `<span class="dots">${(e.resp === 'unodc' ? INST.map(i => G[i]) : GRUPOS).map(g => { const s = statusOf(e.id, g.id); return `<i class="${s === 'enviada' ? 'ok' : s === 'andamento' ? 'and' : ''}" style="--gc:${g.cor}" title="${esc(g.nome)}: ${s === 'enviada' ? 'enviado' : s === 'andamento' ? 'em rascunho' : 'sem registro'}"></i>`; }).join('')}</span>`; }
 function diasHTML() {
   if (S.role !== 'equipe') return '';
   return `<div class="banner" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center"><b>Abertura dos dias para os grupos:</b> Dia 1 aberto${[2, 3].map(d => { const auto = Date.now() >= Date.parse(DIA_INI[d]); const lib = (S.diasLib || []).includes(d); return auto ? ` · Dia ${d} aberto (início do dia)` : ` · <button class="btn small ${lib ? '' : 'ghost'}" data-libdia="${d}">${lib ? `Dia ${d} liberado · fechar` : `Liberar Dia ${d} agora`}</button>`; }).join('')}<span class="muted" style="font-size:13px">Sem ação da equipe, cada dia abre sozinho às 7h de ${DIA_DATA[2]} e ${DIA_DATA[3]}.</span></div>`;
@@ -2813,7 +2814,7 @@ function eqEditHTML() {
 function respostasHTML() {
   const sid = S.respStage && E[S.respStage] ? S.respStage : activeStage().id; const e = E[sid];
   return `<div style="display:grid;gap:14px"><div class="toolbar"><label for="resp-stage" class="eyebrow">Etapa</label><select id="resp-stage">${WORK.filter(x => x.ex).map(x => `<option value="${x.id}" ${x.id === sid ? 'selected' : ''}>Dia ${x.dia} · ${hm(x.ini)} · ${esc(x.exNome || x.sessao)}</option>`).join('')}</select></div>
-    <div class="cols4">${(e.resp === 'unodc' ? [G.unodc] : GRUPOS).map(g => { const d = S.resp[docId(sid, g.id)]; const st = d?.status || 'vazio';
+    <div class="cols4">${(e.resp === 'unodc' ? INST.map(i => G[i]) : GRUPOS).map(g => { const d = S.resp[docId(sid, g.id)]; const st = d?.status || 'vazio';
       return `<div class="col" style="--gc:${g.cor}"><div style="display:flex;justify-content:space-between;gap:8px"><span class="gtag" style="--gc:${g.cor}">${esc(g.nome)}</span>${S.role === 'equipe' ? `<button class="btn small ghost" data-eqedit="${g.id}" data-eqstage="${sid}">Editar</button>` : ''}<span class="s ${st === 'enviada' ? 'ok' : st === 'andamento' ? 'and' : ''}" style="font-size:12px">${st === 'enviada' ? 'Enviado ' + hhmm(d.enviadoEm) : st === 'andamento' ? 'Rascunho' : 'Sem registro'}</span></div>
         ${g.tema ? `<span class="muted" style="font-size:12.5px">${sid === 'd2-clinicas' ? `Clínica ${g.clinica} · ${esc(g.clinicaNome)}` : `Tema ${g.tema} · ${esc(g.temaNome)}`}</span>` : ''}${d ? `<dl>${CFG.camposDe(e, g).map(f => { const t = valueText(f, d.dados?.[f.k]); return t ? `<div><dt>${esc(f.l || f.item)}</dt><dd>${esc(t)}</dd></div>` : ''; }).join('') || '<p class="empty">Nada registrado ainda.</p>'}</dl>` : '<p class="empty">Nada registrado ainda.</p>'}</div>`; }).join('')}</div></div>`;
 }
