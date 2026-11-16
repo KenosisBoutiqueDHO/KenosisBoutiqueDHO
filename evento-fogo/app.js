@@ -1842,8 +1842,8 @@ module.exports = QRRSBlock;
     f: [{ k: 'horizonte', t: 'choice', l: 'Horizonte', o: ['Curto', 'Médio', 'Longo'] }, ...W5, { k: 'produto', t: 'line', l: 'Produto esperado' }] },
     { k: 'anotacoes', t: 'area', l: 'Anotações gerais', rows: 4 }];
   // Ajuste em 16/11: a Missão de Belém começou às 10h25. Duração das sessões mantida; intervalo da manhã suprimido, almoço de 60 min e intervalo da tarde de 10 min.
-  { const H = { 'd1-abertura': ['09:00', '10:25'], 'd1-belem': ['10:25', '11:05'], 'd1-estados1': ['11:05', '13:05'], 'd1-almoco': ['13:05', '14:05'], 'd1-barbante': ['14:05', '14:20'],
-      'd1-estados2': ['14:20', '15:45'], 'd1-int2': ['15:45', '15:55'], 'd1-grupos': ['15:55', '17:00'], 'd1-sintese': ['17:00', '17:30'] };
+  { const H = { 'd1-abertura': ['09:00', '10:25'], 'd1-belem': ['10:25', '11:15'], 'd1-estados1': ['11:15', '13:15'], 'd1-almoco': ['13:15', '14:15'], 'd1-barbante': ['14:15', '14:30'],
+      'd1-estados2': ['14:30', '15:55'], 'd1-int2': ['15:55', '16:05'], 'd1-grupos': ['16:05', '17:10'], 'd1-sintese': ['17:10', '17:40'] };
     Object.entries(H).forEach(([id, [a, b]]) => Object.assign(P(id), { ini: a, fim: b }));
     P('d1-abertura').passos = [{ min: 85, txt: 'Abertura institucional e alinhamento.' }];
     const i1 = ETAPAS.findIndex(e => e.id === 'd1-int1'); if (i1 >= 0) ETAPAS.splice(i1, 1); }
@@ -2697,7 +2697,7 @@ function ex1HTML() {
   if (d && d.status === 'enviada') return sel + `<div class="sentbox"><span class="ok-ic" aria-hidden="true">✓</span><div><h3>${esc(e.exNome)} enviado às ${hhmm(d.enviadoEm)}</h3><p>O registro da UNODC, com o INPE e a SEMAS/PA, foi entregue. Ele aparece na aba Respostas por etapa.</p></div></div>`;
   return sel + stageHTML(e, G[S.role], e); }
 // ---------- Cronômetro de palco (sinal das placas de 5, 2 e 1 minuto e TEMPO) ----------
-const SEGS = { 'd1-estados1': [...[1, 2, 3, 4, 5].map(i => [`Apresentação ${i} de 5`, 20]), ['Perguntas e discussões', 20]], 'd1-estados2': [...[1, 2, 3, 4].map(i => [`Apresentação ${i} de 4`, 20]), ['Perguntas e discussões', 5]],
+const SEGS = { 'd1-estados1': [...[1, 2, 3, 4, 5].map(i => [i === 1 ? 'Apresentação 1 de 5 · Amazonas' : `Apresentação ${i} de 5`, 20]), ['Perguntas e discussões', 20]], 'd1-estados2': [...[1, 2, 3, 4].map(i => [`Apresentação ${i} de 4`, 20]), ['Perguntas e discussões', 5]],
   'd2-aplicacoes': [['Apresentação MMA', 20], ['Apresentação Ibama/Prevfogo', 20], ['Apresentação ICMBio', 20], ['Diálogo final de convergência', 30]] };
 const _mm = (t) => { const [a, b] = t.split(':').map(Number); return a * 60 + b; };
 function cronoHTML() {
