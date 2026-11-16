@@ -2133,18 +2133,19 @@ function loadLocal() {
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('kfa:r:')) { const id = k.slice(6); const v = LS.get('r:' + id); if (v && (!S.resp[id] || (v.atualizadoEm || 0) > (S.resp[id].atualizadoEm || 0))) S.resp[id] = v; } } } catch {}
 }
 const timers = {};
-function queueSave(id, delay = 1200) {
+function queueSave(id, delay = 800) {
   clearTimeout(timers[id]); S.dirty[id] = true; paintSave(id, 'Salvando…');
+  if (S.resp[id]) { LS.set('r:' + id, S.resp[id]); if (S.resp[id].status !== 'enviada') LS.set('dpend:' + id, true); } // cópia imediata no aparelho
   timers[id] = setTimeout(() => flush(id), delay);
 }
 async function flush(id) {
   const doc = S.resp[id]; if (!doc) return;
   if (doc.status === 'enviada') { S.dirty[id] = false; return; }
   LS.set('r:' + id, doc);
-  if (!S.db || S.mode !== 'online') { S.dirty[id] = false; S.savedAt[id] = Date.now(); paintSave(id); return; }
+  if (!S.db || S.mode !== 'online') { LS.set('dpend:' + id, true); S.dirty[id] = false; S.savedAt[id] = Date.now(); paintSave(id); return; }
   if (S.saving[id]) { queueSave(id, 600); return; }
   S.saving[id] = true;
-  try { await S.db.doc('respostas/' + id).set(doc); S.dirty[id] = false; S.savedAt[id] = Date.now(); paintSave(id); }
+  try { await S.db.doc('respostas/' + id).set(doc); S.dirty[id] = false; S.savedAt[id] = Date.now(); LS.del('dpend:' + id); paintSave(id); }
   catch (e) { paintSave(id, 'Salvo só neste aparelho. Tentaremos de novo.'); setTimeout(() => queueSave(id), 4000); }
   finally { S.saving[id] = false; }
 }
@@ -2183,8 +2184,14 @@ async function subirEnvio(id) {
   } catch { setTimeout(() => subirEnvio(id), 5000); }
 }
 function reenviarPendentes() {
-  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('kfa:pend:')) subirEnvio(k.slice(9)); } } catch {}
+  try { const ks = []; for (let i = 0; i < localStorage.length; i++) ks.push(localStorage.key(i));
+    ks.forEach(k => { if (!k) return; if (k.startsWith('kfa:pend:')) subirEnvio(k.slice(9)); else if (k.startsWith('kfa:dpend:')) { const id = k.slice(10); if (!S.resp[id]) { const d = LS.get('r:' + id, null); if (d) S.resp[id] = d; } if (S.resp[id] && S.resp[id].grupo === S.role && !S.saving[id]) flush(id); else LS.del('dpend:' + id); } }); } catch {}
 }
+// a cada 15 segundos, reenvia o que ficou só no aparelho; ao bloquear a tela ou sair, grava na hora
+setInterval(() => { if (S.db && S.mode === 'online' && S.role && !PANEL(S.role)) reenviarPendentes(); }, 15000);
+function gravarTudoAgora() { Object.keys(timers).forEach(id => { if (S.dirty[id]) { clearTimeout(timers[id]); flush(id); } }); }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') gravarTudoAgora(); });
+window.addEventListener('pagehide', gravarTudoAgora);
 function getDoc(etapa, grupo) {
   const id = docId(etapa, grupo);
   if (!S.resp[id]) S.resp[id] = { etapa, grupo, dados: {}, status: 'vazio', atualizadoEm: 0 };
