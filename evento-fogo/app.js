@@ -1847,6 +1847,38 @@ module.exports = QRRSBlock;
     Object.entries(H).forEach(([id, [a, b]]) => Object.assign(P(id), { ini: a, fim: b }));
     P('d1-abertura').passos = [{ min: 85, txt: 'Abertura institucional e alinhamento.' }];
     const i1 = ETAPAS.findIndex(e => e.id === 'd1-int1'); if (i1 >= 0) ETAPAS.splice(i1, 1); }
+  // Ajuste em 17/11: agenda do Dia 2 idêntica ao arquivo enviado pela organização (Agenda Dia 2 — Encontro Técnico INPE 2026)
+  { const rm = (id) => { const i = ETAPAS.findIndex(e => e.id === id); if (i >= 0) ETAPAS.splice(i, 1); };
+    rm('d2-ufmg');
+    const PS = (min, txt) => [{ min, txt }];
+    const D2 = {
+      'd2-retomada': ['08:30', '08:33', 'Retomada', 'Síntese das necessidades e perguntas produzidas no primeiro dia.', 'Agenda técnica do dia confirmada.', 'Organização'],
+      'd2-bdc': ['08:33', '08:53', 'INPE Brazil Data Cube', 'Apresentação do ambiente de computação em nuvem do INPE, suas bases de dados, serviços e possibilidades de uso pelos estados.', 'Capacidades do Brazil Data Cube relacionadas às demandas regionais.', 'INPE'],
+      'd2-sala': ['08:53', '09:13', 'INPE Sala de Situação', 'Apresentação da estrutura, dos fluxos, dos produtos e das possibilidades de apoio ao acompanhamento e à tomada de decisão.', 'Possibilidades de uso e cooperação identificadas.', 'INPE'],
+      'd2-biomas': ['09:13', '09:33', 'INPE Monitoramento dos Biomas', 'Apresentação sobre o monitoramento dos biomas brasileiros, com Cláudio Almeida, incluindo produtos, metodologias e aplicações relevantes para os estados.', 'Produtos de monitoramento relacionados às necessidades estaduais.', 'INPE (Cláudio Almeida)'],
+      'd2-queimadas': ['09:33', '09:50', 'INPE Programa Queimadas', 'Apresentação dos dados, produtos, metodologias, sistemas e serviços do Programa Queimadas, com ênfase nas aplicações para monitoramento, prevenção, fiscalização e resposta.', 'Soluções do tema central do encontro analisadas à luz das demandas regionais.', 'INPE'],
+      'd2-int1': ['09:50', '10:00', 'Intervalo', 'Pausa.', '—'],
+      'd2-aplicacoes': ['10:00', '11:30', 'Aplicações institucionais dos dados', 'Apresentações MMA, Ibama/Prevfogo e ICMBio (20 minutos cada), sobre usos da informação, necessidades de compartilhamento e resultados esperados + 30 minutos de diálogo final para convergência.', 'Usos operacionais e institucionais conectados às soluções apresentadas.', 'MMA, Ibama/Prevfogo e ICMBio'],
+      'd2-almoco': ['12:00', '13:00', 'Almoço', 'Intervalo.', '—'],
+      'd2-sisfogo': ['14:45', '15:30', 'SISFOGO e ADPF nº 743', 'MMA, ICMBio, Ibama/Prevfogo e áreas técnicas apresentam finalidade, arquitetura, dados, requisitos, protocolos e caminhos de adesão ou interoperabilidade do SISFOGO com sistemas estaduais.', 'Requisitos, responsabilidades e caminhos de integração compreendidos; lacunas registradas.', 'MMA, ICMBio, Ibama/Prevfogo e áreas técnicas'],
+      'd2-int2': ['15:30', '15:45', 'Intervalo', 'Pausa.', '—'],
+      'd2-clinicas': ['15:45', '16:45', 'Clínicas técnicas', 'Grupos mistos identificam e classificam demandas: inexistente, a ser desenvolvida; existente e suficiente; existente, mas que necessita de ajustes; existente, mas dependente de integração com o SISFOGO; existente, mas dependente de articulação institucional; existente, mas necessita de capacitação.', 'Matriz demanda-solução-lacuna preenchida, com trilha de interoperabilidade.'],
+      'd2-painel': ['16:45', '17:30', 'Painel de convergência', 'Apresentação sintética dos grupos, identificação de demandas comuns, possibilidades de apoio e pontos ainda sem resposta.', 'Carteira preliminar de oportunidades e lacunas validadas.'] };
+    Object.entries(D2).forEach(([id, [a, b, s, c, r, q]]) => { const e = P(id); if (!e) return; Object.assign(e, { ini: a, fim: b, sessao: s, conteudo: c, resultado: r }); if (q) e.quem = q; });
+    const tx = 'Ouvir a apresentação. O líder registra o que serve para os estados e o que falta; no último minuto, lê e entrega.';
+    P('d2-retomada').passos = PS(3, 'Síntese das necessidades e perguntas produzidas no primeiro dia.');
+    ['d2-bdc', 'd2-sala', 'd2-biomas'].forEach(id => { P(id).passos = PS(20, tx); });
+    P('d2-queimadas').passos = PS(17, tx);
+    P('d2-aplicacoes').passos = [{ min: 60, txt: 'Apresentações MMA, Ibama/Prevfogo e ICMBio, 20 minutos cada. O líder preenche um quadro por instituição.' }, { min: 30, txt: 'Diálogo final para convergência. O líder revisa e entrega.' }];
+    const sf = P('d2-sisfogo');
+    if (!P('d2-sisfogo1')) ETAPAS.push({ id: 'd2-sisfogo1', dia: 2, ini: '14:00', fim: '14:45', sessao: sf.sessao, tipo: 'plenaria', quem: sf.quem, conteudo: sf.conteudo, resultado: sf.resultado,
+      papel: 'Primeira parte da sessão. O registro do exercício é feito na segunda parte (14h45–15h30), considerando as duas partes.', passos: PS(45, 'Ouvir a primeira parte da sessão SISFOGO e ADPF nº 743.'), campos: [] });
+    sf.passos = PS(45, 'Ouvir a segunda parte da sessão. O líder registra o que os estados precisam fazer para se integrar ao SISFOGO e o que falta, considerando as duas partes; no final, lê e entrega.');
+    if (!P('d2-visita')) ETAPAS.push({ id: 'd2-visita', dia: 2, ini: '13:00', fim: '14:00', sessao: 'Visita centro de satélites', tipo: 'plenaria', quem: 'INPE',
+      conteudo: 'Visita técnica às instalações e operações do Centro de Satélites.', resultado: 'Conhecimento prático da infraestrutura e operação satelital.',
+      papel: 'Participar da visita técnica. Não há registro nesta sessão.', passos: PS(60, 'Visita técnica ao Centro de Satélites.'), campos: [] });
+    P('d2-clinicas').passos = [{ min: 5, txt: 'Escolher o líder e ler o foco da clínica e o que ela deve produzir.' }, { min: 45, txt: 'Para cada demanda da clínica: o grupo descreve a demanda, a solução relacionada, quem pode atender, a lacuna e a trilha de interoperabilidade. O líder registra.' }, { min: 10, txt: 'Ler em voz alta, definir o porta-voz e entregar.' }];
+    const pn = P('d2-painel'); pn.passos = [{ min: 30, txt: 'Porta-vozes dos grupos apresentam a síntese da clínica, com o tempo dividido igualmente entre os grupos.' }, { min: 15, txt: 'Identificação de demandas comuns, possibilidades de apoio e pontos ainda sem resposta. O líder registra.' }]; }
   ETAPAS.sort((a, b) => a.dia - b.dia || _m(a.ini) - _m(b.ini));
   Object.assign(TEMAS, { 'd1-barbante': 'Integração', 'd2-ufmg': 'Soluções e pesquisa' });
   Object.assign(OBSERVE, { 'd1-estados1': ['PMIF: existe, está vigente, quem coordena', 'Sala de situação: estrutura, rotina e quem decide', 'O que a apresentação confirma ou acrescenta ao levantamento prévio do estado'],
@@ -1883,6 +1915,7 @@ module.exports = QRRSBlock;
     }
   });
 
+  { const sf = ETAPAS.find(e => e.id === 'd2-sisfogo'); if (sf) sf.quando = 'Durante a sessão "SISFOGO e ADPF nº 743" (14h00–15h30), considerando as duas partes. Entregar ao final da sessão, até 15h30.'; }
   const toMin = (h) => { const [a, b] = h.split(':').map(Number); return a * 60 + b; };
   // Garantia: os passos de cada etapa somam exatamente a duração oficial
   const erros = [];
